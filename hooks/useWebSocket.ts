@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 
-const WS_SERVER = "ws://192.168.1.111:81"; // Cambia la IP si es necesario
+// const WS_SERVER = "ws://192.168.1.111:81"; // Cambia la IP si es necesario
+const WS_SERVER = "wss://servidorhydroplas.onrender.com"; // ip del Servidor en la nube
 
 export default function useWebSocket() {
 	const [status, setStatus] = useState("Desconectado");
