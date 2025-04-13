@@ -24,7 +24,7 @@ export default function useWebSocket() {
 		websocket.onopen = () => {
 			console.log("✅ Conectado al ESP32");
 			setStatus("Conectado");
-			websocket.send("clienteWeb"); // Enviar un mensaje al abrir la conexión
+			websocket.send("clienteWeb"); // mensaje para identificar el cliente
 		};
 
 		websocket.onmessage = (event) => {
