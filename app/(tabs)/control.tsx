@@ -15,6 +15,7 @@ export default function ControlScreen() {
         connectWebSocket,
         disconnectWebSocket,
         sendMessage,
+        systemState,
     } = useWebSocket();
 
     // Aplicar colores según el tema
@@ -29,9 +30,19 @@ export default function ControlScreen() {
     const [sliderValue2, setSliderValue2] = useState(0);
     const [sliderValue3, setSliderValue3] = useState(0);
 
+    // Actualizar los sliders cuando cambie systemState
+    useEffect(() => {
+        setSliderValue1(systemState.ledAzul);
+        setSliderValue2(systemState.ledRojo);
+        setSliderValue3(systemState.bombaAgua);
+    }, [systemState]);
+
     useEffect(() => {
         setForceUpdate((prev) => !prev); // 🔥 Fuerza re-render cuando cambia el tema
     }, [theme]);
+
+    // Verificar si está conectado al WebSocket
+    const isConnected = status === "Conectado";
 
     return (
         <ParallaxScrollView
@@ -60,77 +71,78 @@ export default function ControlScreen() {
                         <Button
                             title="Conectar"
                             onPress={connectWebSocket}
-                            disabled={status === "Conectado"}
+                            disabled={isConnected}
                             color={buttonColor}
                         />
                         <Button
                             title="Desconectar"
                             onPress={disconnectWebSocket}
-                            disabled={status !== "Conectado"}
+                            disabled={!isConnected}
                             color="#F44336"
                         />
                     </View>
                 </ThemedView>
 
-                {/* Sección modificada: Se remplazan los botones por tres sliders */}
-                <ThemedView style={styles.stepContainer}>
-					<ThemedText type="subtitle" style={{ color: textColor }}>
-						Acciones - Ajusta las barras
-					</ThemedText>
-					<View style={styles.sliderContainer}>
-						<ThemedText style={{ color: textColor }}>
-							Led Azul: {sliderValue1}
-						</ThemedText>
-						<Slider
-							style={styles.slider}
-							minimumValue={0}
-							maximumValue={100}
-							value={sliderValue1}
-							onValueChange={value => {
-								const val = Math.floor(value);
-								setSliderValue1(val);
-								sendMessage(`LedAzul ${val}`);
-							}}
-							minimumTrackTintColor={buttonColor}
-							maximumTrackTintColor="#d3d3d3"
-						/>
-						<ThemedText style={{ color: textColor }}>
-							Led Roja: {sliderValue2}
-						</ThemedText>
-						<Slider
-							style={styles.slider}
-							minimumValue={0}
-							maximumValue={100}
-							value={sliderValue2}
-							onValueChange={value => {
-								const val = Math.floor(value);
-								setSliderValue2(val);
-								sendMessage(`LedRojo ${val}`);
-								
-							}}
-							minimumTrackTintColor={buttonColor}
-							maximumTrackTintColor="#d3d3d3"
-						/>
-						<ThemedText style={{ color: textColor }}>
-							Bomba de Agua: {sliderValue3}
-						</ThemedText>
-						<Slider
-							style={styles.slider}
-							minimumValue={0}
-							maximumValue={100}
-							value={sliderValue3}
-							onValueChange={value => {
-								const val = Math.floor(value);
-								setSliderValue3(val);
-								sendMessage(`BombaDeAgua ${val}`);
-							}}
-							minimumTrackTintColor={buttonColor}
-							maximumTrackTintColor="#d3d3d3"
-						/>
-					</View>
-				</ThemedView>
+                {/* Mostrar los sliders solo cuando está conectado */}
+                {isConnected && (
+                    <ThemedView style={styles.stepContainer}>
+                        <ThemedText type="subtitle" style={{ color: textColor }}>
+                            Acciones - Ajusta las barras
+                        </ThemedText>
+                        <View style={styles.sliderContainer}>
+                            <ThemedText style={{ color: textColor }}>
+                                Led Azul: {sliderValue1}
+                            </ThemedText>
+                            <Slider
+                                style={styles.slider}
+                                minimumValue={0}
+                                maximumValue={255}
+                                value={sliderValue1}
+                                onValueChange={value => {
+                                    const val = Math.floor(value);
+                                    setSliderValue1(val);
+                                    sendMessage(`LedAzul ${val}`);
+                                }}
+                                minimumTrackTintColor={buttonColor}
+                                maximumTrackTintColor="#d3d3d3"
+                            />
+                            <ThemedText style={{ color: textColor }}>
+                                Led Roja: {sliderValue2}
+                            </ThemedText>
+                            <Slider
+                                style={styles.slider}
+                                minimumValue={0}
+                                maximumValue={255}
+                                value={sliderValue2}
+                                onValueChange={value => {
+                                    const val = Math.floor(value);
+                                    setSliderValue2(val);
+                                    sendMessage(`LedRojo ${val}`);
+                                }}
+                                minimumTrackTintColor={buttonColor}
+                                maximumTrackTintColor="#d3d3d3"
+                            />
+                            <ThemedText style={{ color: textColor }}>
+                                Bomba de Agua: {sliderValue3}
+                            </ThemedText>
+                            <Slider
+                                style={styles.slider}
+                                minimumValue={0}
+                                maximumValue={255}
+                                value={sliderValue3}
+                                onValueChange={value => {
+                                    const val = Math.floor(value);
+                                    setSliderValue3(val);
+                                    sendMessage(`BombaDeAgua ${val}`);
+                                }}
+                                minimumTrackTintColor={buttonColor}
+                                maximumTrackTintColor="#d3d3d3"
+                            />
+                        </View>
+                    </ThemedView>
+                )}
 
-                <ThemedView style={styles.stepContainer}>
+                {/* <ThemedView style={styles.stepContainer}>
                     <ThemedText type="subtitle" style={{ color: textColor }}>
                         Mensajes Recibidos
                     </ThemedText>
@@ -143,7 +155,7 @@ export default function ControlScreen() {
                             </ThemedText>
                         ))}
                     </ScrollView>
-                </ThemedView>
+                </ThemedView> */}
             </View>
         </ParallaxScrollView>
     );
