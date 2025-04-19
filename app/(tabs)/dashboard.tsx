@@ -36,10 +36,10 @@ export default function DashboardScreen() {
         setError(null);
 
         try {
-            console.log("Fetching latest data...");
+            // console.log("Fetching latest data...");
             const response = await fetch("https://servidorhydroplas.onrender.com/api/last-reading"); // <-- Sin mode: 'no-cors'
 
-            console.log("Response status:", response.status);
+            // console.log("Response status:", response.status);
 
             if (!response.ok) {
                 // Intenta obtener más detalles del error si es posible
@@ -53,7 +53,7 @@ export default function DashboardScreen() {
             }
 
             const data = await response.json(); // <-- Procesar la respuesta JSON real
-            console.log("Data received:", data);
+            // console.log("Data received:", data);
 
             // Actualizar el estado con los datos REALES, ajustando las claves
             setSystemState({
