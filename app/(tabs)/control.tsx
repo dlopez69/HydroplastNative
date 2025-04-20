@@ -9,6 +9,7 @@ import { ThemedText } from "@/components/ThemedText";
 
 const { width } = Dimensions.get("window");
 const cardWidth = width > 600 ? "30%" : "46%"; // Adapta para tablets/phones
+const MAX_VALUE = 4095;
 
 export default function ControlScreen() {
     const {
@@ -62,8 +63,8 @@ export default function ControlScreen() {
     // Función para obtener estado como texto
     const getStateText = (value) => {
         if (value === 0) return "Apagado";
-        if (value === 255) return "Encendido";
-        return `${Math.floor((value / 255) * 100)}%`;
+        if (value === MAX_VALUE) return "Encendido";
+        return `${Math.floor((value / MAX_VALUE) * 100)}%`;
     };
 
     return (
@@ -163,7 +164,7 @@ export default function ControlScreen() {
                                     <Slider
                                         style={styles.slider}
                                         minimumValue={0}
-                                        maximumValue={255}
+                                        maximumValue={MAX_VALUE}
                                         value={sliderValue1}
                                         onValueChange={value => {
                                             const val = Math.floor(value);
@@ -186,7 +187,7 @@ export default function ControlScreen() {
                                         <Button
                                             title="ON" 
                                             onPress={() => {
-                                                setSliderValue1(255);
+                                                setSliderValue1(MAX_VALUE);
                                                 sendMessage("LedAzul 255");
                                             }}
                                             color={ledBlueColor}
@@ -219,7 +220,7 @@ export default function ControlScreen() {
                                     <Slider
                                         style={styles.slider}
                                         minimumValue={0}
-                                        maximumValue={255}
+                                        maximumValue={MAX_VALUE}
                                         value={sliderValue2}
                                         onValueChange={value => {
                                             const val = Math.floor(value);
@@ -242,7 +243,7 @@ export default function ControlScreen() {
                                         <Button
                                             title="ON" 
                                             onPress={() => {
-                                                setSliderValue2(255);
+                                                setSliderValue2(MAX_VALUE);
                                                 sendMessage("LedRojo 255");
                                             }}
                                             color={ledRedColor}
@@ -282,7 +283,7 @@ export default function ControlScreen() {
                                 <Slider
                                     style={styles.slider}
                                     minimumValue={0}
-                                    maximumValue={255}
+                                    maximumValue={MAX_VALUE}
                                     value={sliderValue3}
                                     onValueChange={value => {
                                         const val = Math.floor(value);
@@ -298,7 +299,7 @@ export default function ControlScreen() {
                                         style={[
                                             styles.progressBar, 
                                             { 
-                                                width: `${Math.min(100, Math.max(0, sliderValue3/255*100))}%`,
+                                                width: `${Math.min(100, Math.max(0, sliderValue3/MAX_VALUE*100))}%`,
                                                 backgroundColor: pumpColor 
                                             }
                                         ]} 
@@ -316,7 +317,7 @@ export default function ControlScreen() {
                                     <Button
                                         title="MÁXIMO" 
                                         onPress={() => {
-                                            setSliderValue3(255);
+                                            setSliderValue3(MAX_VALUE);
                                             sendMessage("BombaDeAgua 255");
                                         }}
                                         color={pumpColor}
