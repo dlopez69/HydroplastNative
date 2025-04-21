@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 
-// const WS_SERVER = "ws://192.168.1.111:81"; // Cambia la IP si es necesario
-const WS_SERVER = "wss://servidorhydroplas.onrender.com"; // ip del Servidor en la nube
+// const WS_SERVER = "ws://192.168.1.248:10000"; // localhost
+const WS_SERVER = "wss://servidorhydroplas.onrender.com"	; // servidor remoto
+
 
 export default function useWebSocket() {
 	const [status, setStatus] = useState("Desconectado");
@@ -9,7 +10,7 @@ export default function useWebSocket() {
 	const websocketRef = useRef<WebSocket | null>(null);
 
 	const connectWebSocket = () => {
-		if (
+		if (	
 			websocketRef.current &&
 			websocketRef.current.readyState === WebSocket.OPEN
 		) {
@@ -23,6 +24,7 @@ export default function useWebSocket() {
 		websocket.onopen = () => {
 			console.log("✅ Conectado al ESP32");
 			setStatus("Conectado");
+			websocket.send("clienteWeb"); // mensaje para identificar el cliente
 		};
 
 		websocket.onmessage = (event) => {
