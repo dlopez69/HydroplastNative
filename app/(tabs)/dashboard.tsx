@@ -1,19 +1,11 @@
-import {
-	View,
-	Text,
-	StyleSheet,
-	RefreshControl,
-	ScrollView,
-	Dimensions,
-} from "react-native";
+import { View, Text, StyleSheet, RefreshControl, ScrollView, Dimensions } from "react-native";
 import { useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/hooks/ThemeContext";
 import { useThemeColor } from "@/hooks/useThemeColor";
-
-// Prueba de cambios
+import MetricCard from "@/components/MetricCard";
 
 const { width } = Dimensions.get("window");
-const cardWidth = width > 600 ? "30%" : "46%"; // Adapta para tablets/phones
+const cardWidth = width > 600 ? "30%" : "46%";
 
 export default function DashboardScreen() {
 	const { theme } = useTheme();
@@ -21,16 +13,14 @@ export default function DashboardScreen() {
 	const textColor = useThemeColor({}, "text");
 	const accentColor = useThemeColor({}, "tint");
 	const secondaryTextColor = useThemeColor({}, "tabIconDefault");
-	const cardBackground = theme === "dark" ? "#1F1F1F" : "#F7F9FC";
-	const cardBorderColor = theme === "dark" ? "#2D2D2D" : "#E0E5EC";
 
 	// Colores para métricas específicas (adaptados a tema claro/oscuro)
-	const tempColor = theme === "dark" ? "#FF7043" : "#F44336"; // Rojo/Naranja
-	const lightColor = theme === "dark" ? "#FFCA28" : "#FFC107"; // Amarillo
-	const waterColor = theme === "dark" ? "#29B6F6" : "#2196F3"; // Azul
+	const tempColor = theme === "dark" ? "#FF7043" : "#F44336";
+	const lightColor = theme === "dark" ? "#FFCA28" : "#FFC107";
+	const waterColor = theme === "dark" ? "#29B6F6" : "#2196F3";
 	const ledBlueColor = "#2979FF";
 	const ledRedColor = "#F44336";
-	const pumpColor = theme === "dark" ? "#66BB6A" : "#4CAF50"; // Verde
+	const pumpColor = theme === "dark" ? "#66BB6A" : "#4CAF50";
 
 	const [systemState, setSystemState] = useState({
 		timestamp: "",
@@ -43,7 +33,7 @@ export default function DashboardScreen() {
 	});
 
 	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState(null);
+	const [error, setError] = useState<string | null>(null);
 	const [refreshing, setRefreshing] = useState(false);
 
 	const fetchLatestData = useCallback(async () => {
@@ -105,42 +95,12 @@ export default function DashboardScreen() {
 		setRefreshing(false);
 	}, [fetchLatestData]);
 
-	// Formatear estados de componentes para visualización con icons
-	const formatComponentState = (state, type) => {
-		let stateText = "";
-		let stateIcon = "";
-
-		if (typeof state === "number") {
-			if (state === 0) {
-				stateText = "Apagado";
-				stateIcon = "❌";
-			} else if (state === 1) {
-				stateText = "Encendido";
-				stateIcon = type === "bomba" ? "💧" : "✅";
-			} else if (state > 0) {
-				stateText = `${state}%`;
-				stateIcon = "✅";
-			}
-		}
-
-		return { text: stateText, icon: stateIcon };
-	};
-
-	// Determinar el estado colorizado para indicadores de nivel
-	const getStatusColor = (value, thresholds) => {
-		if (value <= thresholds.low) return "#F44336"; // Rojo - crítico
-		if (value <= thresholds.medium) return "#FFC107"; // Amarillo - cuidado
-		return "#4CAF50"; // Verde - óptimo
-	};
-
-	// Formatear fecha en formato amigable
-	const formatTimestamp = (timestamp) => {
+	const formatTimestamp = (timestamp: string): string => {
 		if (!timestamp) return "N/A";
 
 		const date = new Date(timestamp);
 		const now = new Date();
 
-		// Si es hoy, mostrar solo la hora
 		if (date.toDateString() === now.toDateString()) {
 			return `Hoy ${date.toLocaleTimeString([], {
 				hour: "2-digit",
@@ -149,7 +109,6 @@ export default function DashboardScreen() {
 			})}`;
 		}
 
-		// Si es ayer, mostrar "Ayer" y la hora
 		const yesterday = new Date(now);
 		yesterday.setDate(yesterday.getDate() - 1);
 		if (date.toDateString() === yesterday.toDateString()) {
@@ -160,14 +119,7 @@ export default function DashboardScreen() {
 			})}`;
 		}
 
-		// Otro caso, mostrar fecha y hora completas
 		return date.toLocaleString();
-	};
-
-	// Calcular estado del agua para visualización
-	const waterLevelStatus = {
-		color: getStatusColor(systemState.nivelAgua, { low: 20, medium: 50 }),
-		icon: systemState.nivelAgua < 20 ? "⚠️" : "💧",
 	};
 
 	return (
@@ -186,7 +138,7 @@ export default function DashboardScreen() {
 			<View style={[styles.container, { backgroundColor }]}>
 				<View style={styles.header}>
 					<Text style={[styles.title, { color: textColor }]}>
-						📊 Monitor en Tiempo Real
+						 📊 Monitor en Tiempo Real
 					</Text>
 					<Text style={[styles.subtitle, { color: secondaryTextColor }]}>
 						Sistema Hidropónico
@@ -216,9 +168,7 @@ export default function DashboardScreen() {
 				{!loading && !error && (
 					<>
 						<View style={styles.timestampContainer}>
-							<Text
-								style={[styles.timestampLabel, { color: secondaryTextColor }]}
-							>
+							<Text style={[styles.timestampLabel, { color: secondaryTextColor }]}>
 								Última actualización:
 							</Text>
 							<Text style={[styles.timestampValue, { color: textColor }]}>
@@ -228,100 +178,38 @@ export default function DashboardScreen() {
 
 						<View style={styles.metricsSection}>
 							<Text style={[styles.sectionTitle, { color: textColor }]}>
-								🌡️ Condiciones Ambientales
+								 🌡️ Condiciones Ambientales
 							</Text>
 							<View style={styles.grid}>
-								{/* Tarjeta de temperatura */}
-								<View
-									style={[
-										styles.card,
-										{
-											backgroundColor: cardBackground,
-											borderColor: cardBorderColor,
-										},
-									]}
-								>
-									<View
-										style={[
-											styles.cardHeader,
-											{
-												backgroundColor:
-													theme === "dark" ? "#2A2A2A" : "#f0f3f8",
-											},
-										]}
-									>
-										<Text style={[styles.cardIcon, { color: tempColor }]}>
-											🌡️
-										</Text>
-									</View>
-									<View style={styles.cardBody}>
-										<Text
-											style={[styles.cardTitle, { color: secondaryTextColor }]}
-										>
-											Temperatura
-										</Text>
-										<Text style={[styles.cardValue, { color: tempColor }]}>
-											{systemState.temperatura != null
-												? `${systemState.temperatura.toFixed(1)}°C`
-												: "N/A"}
-										</Text>
-										<Text
-											style={[styles.cardStatus, { color: secondaryTextColor }]}
-										>
-											{systemState.temperatura > 30
-												? "⚠️ Alta"
-												: systemState.temperatura < 15
-												? "❄️ Baja"
-												: "✓ Normal"}
-										</Text>
-									</View>
-								</View>
+								<MetricCard
+									icon="🌡️"
+									title="Temperatura"
+									value={systemState.temperatura}
+									unit="°C"
+									color={tempColor}
+									status={
+										systemState.temperatura > 30
+											? "⚠️ Alta"
+											: systemState.temperatura < 15
+											? "❄️ Baja"
+											: "✓ Normal"
+									}
+								/>
 
-								{/* Tarjeta de iluminancia */}
-								<View
-									style={[
-										styles.card,
-										{
-											backgroundColor: cardBackground,
-											borderColor: cardBorderColor,
-										},
-									]}
-								>
-									<View
-										style={[
-											styles.cardHeader,
-											{
-												backgroundColor:
-													theme === "dark" ? "#2A2A2A" : "#f0f3f8",
-											},
-										]}
-									>
-										<Text style={[styles.cardIcon, { color: lightColor }]}>
-											☀️
-										</Text>
-									</View>
-									<View style={styles.cardBody}>
-										<Text
-											style={[styles.cardTitle, { color: secondaryTextColor }]}
-										>
-											Iluminancia
-										</Text>
-										<Text style={[styles.cardValue, { color: lightColor }]}>
-											{systemState.iluminancia != null
-												? `${systemState.iluminancia.toFixed(0)} lx`
-												: "N/A"}
-										</Text>
-										<Text
-											style={[styles.cardStatus, { color: secondaryTextColor }]}
-										>
-											{systemState.iluminancia > 1000
-												? "☀️ Brillante"
-												: systemState.iluminancia > 500
-												? "🌤️ Adecuada"
-												: "🌥️ Baja"}
-										</Text>
-									</View>
-								</View>
+								<MetricCard
+									icon="☀️"
+									title="Iluminancia"
+									value={systemState.iluminancia}
+									unit=" lx"
+									color={lightColor}
+									status={
+										systemState.iluminancia > 1000
+											? "☀️ Brillante"
+											: systemState.iluminancia > 500
+											? "🌤️ Adecuada"
+											: "🌥️ Baja"
+									}
+								/>
 							</View>
 						</View>
 
@@ -330,122 +218,25 @@ export default function DashboardScreen() {
 								💧 Sistema Hidráulico
 							</Text>
 							<View style={styles.grid}>
-								{/* Tarjeta de nivel de agua */}
-								<View
-									style={[
-										styles.card,
-										{
-											backgroundColor: cardBackground,
-											borderColor: cardBorderColor,
-										},
-									]}
-								>
-									<View
-										style={[
-											styles.cardHeader,
-											{
-												backgroundColor:
-													theme === "dark" ? "#2A2A2A" : "#f0f3f8",
-											},
-										]}
-									>
-										<Text style={[styles.cardIcon, { color: waterColor }]}>
-											{waterLevelStatus.icon}
-										</Text>
-									</View>
-									<View style={styles.cardBody}>
-										<Text
-											style={[styles.cardTitle, { color: secondaryTextColor }]}
-										>
-											Nivel de Agua
-										</Text>
-										<Text
-											style={[
-												styles.cardValue,
-												{ color: waterLevelStatus.color },
-											]}
-										>
-											{systemState.nivelAgua != null
-												? `${systemState.nivelAgua.toFixed(1)}%`
-												: "N/A"}
-										</Text>
-										<View style={styles.progressBarContainer}>
-											<View
-												style={[
-													styles.progressBar,
-													{
-														width: `${Math.min(
-															100,
-															Math.max(0, systemState.nivelAgua)
-														)}%`,
-														backgroundColor: waterLevelStatus.color,
-													},
-												]}
-											/>
-										</View>
-									</View>
-								</View>
+								<MetricCard
+									icon="💧"
+									title="Nivel de Agua"
+									value={systemState.nivelAgua}
+									unit="%"
+									color={waterColor}
+									showProgressBar={true}
+									progressValue={systemState.nivelAgua}
+								/>
 
-								{/* Tarjeta de bomba de agua */}
-								<View
-									style={[
-										styles.card,
-										{
-											backgroundColor: cardBackground,
-											borderColor: cardBorderColor,
-										},
-									]}
-								>
-									<View
-										style={[
-											styles.cardHeader,
-											{
-												backgroundColor:
-													theme === "dark" ? "#2A2A2A" : "#f0f3f8",
-											},
-										]}
-									>
-										<Text style={[styles.cardIcon, { color: pumpColor }]}>
-											🚰
-										</Text>
-									</View>
-									<View style={styles.cardBody}>
-										<Text
-											style={[styles.cardTitle, { color: secondaryTextColor }]}
-										>
-											Bomba de Agua
-										</Text>
-										<Text
-											style={[
-												styles.cardValue,
-												{
-													color: systemState.bombaAgua
-														? pumpColor
-														: secondaryTextColor,
-												},
-											]}
-										>
-											{systemState.bombaAgua != null
-												? formatComponentState(systemState.bombaAgua, "bomba")
-														.text
-												: "N/A"}
-										</Text>
-										<View
-											style={[
-												styles.statusIndicator,
-												{
-													backgroundColor: systemState.bombaAgua
-														? pumpColor
-														: "#DDD",
-												},
-											]}
-										>
-											<Text style={styles.statusIndicatorText}>
-												{systemState.bombaAgua ? "ACTIVA" : "INACTIVA"}
-											</Text>
-										</View>
-									</View>
-								</View>
+								<MetricCard
+									icon="🚰"
+									title="Bomba de Agua"
+									value={`${Math.floor((systemState.bombaAgua / 4095) * 100)}%`}
+									color={pumpColor}
+									isToggleableComponent={true}
+									isActive={systemState.bombaAgua > 0}
+									statusText={systemState.bombaAgua > 0 ? "ACTIVA" : "INACTIVA"}
+								/>
 							</View>
 						</View>
 
@@ -454,125 +245,23 @@ export default function DashboardScreen() {
 								💡 Sistema de Iluminación
 							</Text>
 							<View style={styles.grid}>
-								{/* Tarjeta de LED azul */}
-								<View
-									style={[
-										styles.card,
-										{
-											backgroundColor: cardBackground,
-											borderColor: cardBorderColor,
-										},
-									]}
-								>
-									<View
-										style={[
-											styles.cardHeader,
-											{
-												backgroundColor:
-													theme === "dark" ? "#2A2A2A" : "#f0f3f8",
-											},
-										]}
-									>
-										<Text style={[styles.cardIcon, { color: ledBlueColor }]}>
-											🔵
-										</Text>
-									</View>
-									<View style={styles.cardBody}>
-										<Text
-											style={[styles.cardTitle, { color: secondaryTextColor }]}
-										>
-											LED Azul
-										</Text>
-										<Text
-											style={[
-												styles.cardValue,
-												{
-													color: systemState.ledAzul
-														? ledBlueColor
-														: secondaryTextColor,
-												},
-											]}
-										>
-											{systemState.ledAzul != null
-												? formatComponentState(systemState.ledAzul).text
-												: "N/A"}
-										</Text>
-										<View
-											style={[
-												styles.statusIndicator,
-												{
-													backgroundColor: systemState.ledAzul
-														? ledBlueColor
-														: "#DDD",
-												},
-											]}
-										>
-											<Text style={styles.statusIndicatorText}>
-												{systemState.ledAzul ? "ENCENDIDO" : "APAGADO"}
-											</Text>
-										</View>
-									</View>
-								</View>
+								<MetricCard
+									icon="🔵"
+									title="LED Azul"
+									value={`${Math.floor((systemState.ledAzul / 4095) * 100)}%`}
+									color={ledBlueColor}
+									isToggleableComponent={true}
+									isActive={systemState.ledAzul > 0}
+								/>
 
-								{/* Tarjeta de LED rojo */}
-								<View
-									style={[
-										styles.card,
-										{
-											backgroundColor: cardBackground,
-											borderColor: cardBorderColor,
-										},
-									]}
-								>
-									<View
-										style={[
-											styles.cardHeader,
-											{
-												backgroundColor:
-													theme === "dark" ? "#2A2A2A" : "#f0f3f8",
-											},
-										]}
-									>
-										<Text style={[styles.cardIcon, { color: ledRedColor }]}>
-											🔴
-										</Text>
-									</View>
-									<View style={styles.cardBody}>
-										<Text
-											style={[styles.cardTitle, { color: secondaryTextColor }]}
-										>
-											LED Rojo
-										</Text>
-										<Text
-											style={[
-												styles.cardValue,
-												{
-													color: systemState.ledRojo
-														? ledRedColor
-														: secondaryTextColor,
-												},
-											]}
-										>
-											{systemState.ledRojo != null
-												? formatComponentState(systemState.ledRojo).text
-												: "N/A"}
-										</Text>
-										<View
-											style={[
-												styles.statusIndicator,
-												{
-													backgroundColor: systemState.ledRojo
-														? ledRedColor
-														: "#DDD",
-												},
-											]}
-										>
-											<Text style={styles.statusIndicatorText}>
-												{systemState.ledRojo ? "ENCENDIDO" : "APAGADO"}
-											</Text>
-										</View>
-									</View>
-								</View>
+								<MetricCard
+									icon="🔴"
+									title="LED Rojo"
+									value={`${Math.floor((systemState.ledRojo / 4095) * 100)}%`}
+									color={ledRedColor}
+									isToggleableComponent={true}
+									isActive={systemState.ledRojo > 0}
+								/>
 							</View>
 						</View>
 
@@ -676,68 +365,6 @@ const styles = StyleSheet.create({
 		flexWrap: "wrap",
 		justifyContent: "space-between",
 		width: "100%",
-	},
-	card: {
-		width: cardWidth,
-		marginBottom: 16,
-		borderRadius: 16,
-		overflow: "hidden",
-		borderWidth: 1,
-		elevation: 3,
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.1,
-		shadowRadius: 4,
-	},
-	cardHeader: {
-		paddingVertical: 12,
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	cardBody: {
-		padding: 14,
-		alignItems: "center",
-	},
-	cardIcon: {
-		fontSize: 28,
-	},
-	cardTitle: {
-		fontSize: 14,
-		textAlign: "center",
-		marginBottom: 8,
-	},
-	cardValue: {
-		fontSize: 22,
-		fontWeight: "bold",
-		textAlign: "center",
-		marginBottom: 8,
-	},
-	cardStatus: {
-		fontSize: 12,
-		textAlign: "center",
-	},
-	progressBarContainer: {
-		height: 8,
-		width: "100%",
-		backgroundColor: "#E0E0E0",
-		borderRadius: 4,
-		marginTop: 8,
-		overflow: "hidden",
-	},
-	progressBar: {
-		height: "100%",
-	},
-	statusIndicator: {
-		paddingVertical: 4,
-		paddingHorizontal: 8,
-		borderRadius: 12,
-		alignSelf: "center",
-		marginTop: 8,
-	},
-	statusIndicatorText: {
-		color: "white",
-		fontSize: 10,
-		fontWeight: "bold",
 	},
 	refreshHint: {
 		textAlign: "center",

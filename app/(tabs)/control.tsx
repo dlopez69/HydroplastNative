@@ -62,8 +62,6 @@ export default function ControlScreen() {
     
     // Función para obtener estado como texto
     const getStateText = (value) => {
-        if (value === 0) return "Apagado";
-        if (value === MAX_VALUE) return "Encendido";
         return `${Math.floor((value / MAX_VALUE) * 100)}%`;
     };
 
