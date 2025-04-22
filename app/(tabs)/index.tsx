@@ -12,8 +12,7 @@ export default function HomeScreen() {
     const backgroundColor = useThemeColor({}, "background");
     const textColor = useThemeColor({}, "text");
     const secondaryTextColor = useThemeColor({}, "tabIconDefault");
-
-    const { status, connectWebSocket, sendMessage } = useWebSocket();
+    const { status, connectWebSocket } = useWebSocket();
 
     // Intentar conectar automáticamente al iniciar la app
     useEffect(() => {
@@ -22,13 +21,6 @@ export default function HomeScreen() {
             connectWebSocket();
         }
     }, []);
-
-    const handleModeSelect = (mode: 'automatic' | 'manual' | 'intelligent') => {
-        if (status === "Conectado") {
-            sendMessage(`SetMode ${mode}`);
-            console.log(`Modo seleccionado: ${mode}`);
-        }
-    };
 
     return (
         <ScrollView style={[styles.scrollView, { backgroundColor }]}>
@@ -42,7 +34,11 @@ export default function HomeScreen() {
 
                 <ConnectionPanel showInstructions={false} />
 
-                <OperationModes onModeSelect={handleModeSelect} />
+                <OperationModes 
+                    onModeChange={(mode) => {
+
+                    }}
+                />
 
                 {/* Instrucciones Desplegables */}
                 <View style={styles.instructionsSection}>

@@ -5,6 +5,7 @@ import { useThemeColor } from "@/hooks/useThemeColor";
 import { useTheme } from "@/hooks/ThemeContext";
 import useWebSocket from "@/hooks/useWebSocket";
 import ParallaxScrollView from "@/components/ParallaxScrollView";
+import OperationModes from "@/components/OperationModes";
 
 
 const { width } = Dimensions.get("window");
@@ -88,6 +89,12 @@ export default function ControlScreen() {
                         Sistema Hidropónico
                     </Text>
                 </View>
+
+				<OperationModes 
+					onModeChange={(mode) => {
+
+					}}
+				/>
 
                 <View style={styles.metricsSection}>
                     <Text style={[styles.sectionTitle, { color: textColor }]}>

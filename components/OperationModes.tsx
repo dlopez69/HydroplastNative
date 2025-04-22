@@ -1,15 +1,28 @@
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import { useThemeColor } from "@/hooks/useThemeColor";
+import useWebSocket from "@/hooks/useWebSocket";
 
 interface OperationModesProps {
-    onModeSelect?: (mode: 'automatic' | 'manual' | 'intelligent') => void;
+    onModeChange?: (mode: 'automatic' | 'manual' | 'intelligent') => void; // callback opcional para notificar cambios
 }
 
-export default function OperationModes({ onModeSelect }: OperationModesProps) {
+export default function OperationModes({ onModeChange }: OperationModesProps) {
     const { theme } = useTheme();
     const textColor = useThemeColor({}, "text");
     const accentColor = useThemeColor({}, "tint");
+    const { status, sendMessage } = useWebSocket();
+
+    const handleModeSelect = (mode: 'automatic' | 'manual' | 'intelligent') => {
+        if (status === "Conectado") {
+            sendMessage(`SetMode ${mode}`);
+            console.log(`Modo seleccionado: ${mode}`);
+            // Notificar al componente padre del cambio si se proporcionó el callback
+            onModeChange?.(mode);
+        } else {
+            console.warn("No se puede cambiar el modo: Sistema desconectado");
+        }
+    };
 
     return (
         <View style={styles.modesSection}>
@@ -25,7 +38,7 @@ export default function OperationModes({ onModeSelect }: OperationModesProps) {
                             borderColor: accentColor
                         }
                     ]}
-                    onPress={() => onModeSelect?.('automatic')}
+                    onPress={() => handleModeSelect('automatic')}
                 >
                     <Text style={[styles.modeButtonText, { color: textColor }]}>
                         Automático
@@ -40,7 +53,7 @@ export default function OperationModes({ onModeSelect }: OperationModesProps) {
                             borderColor: accentColor
                         }
                     ]}
-                    onPress={() => onModeSelect?.('manual')}
+                    onPress={() => handleModeSelect('manual')}
                 >
                     <Text style={[styles.modeButtonText, { color: textColor }]}>
                         Manual
@@ -55,7 +68,7 @@ export default function OperationModes({ onModeSelect }: OperationModesProps) {
                             borderColor: accentColor
                         }
                     ]}
-                    onPress={() => onModeSelect?.('intelligent')}
+                    onPress={() => handleModeSelect('intelligent')}
                 >
                     <Text style={[styles.modeButtonText, { color: textColor }]}>
                         Inteligente
