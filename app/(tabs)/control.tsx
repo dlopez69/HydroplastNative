@@ -188,7 +188,7 @@ export default function ControlScreen() {
                                             title="ON" 
                                             onPress={() => {
                                                 setSliderValue1(MAX_VALUE);
-                                                sendMessage("LedAzul 255");
+                                                sendMessage(`LedAzul ${MAX_VALUE}`);
                                             }}
                                             color={ledBlueColor}
                                         />
@@ -244,7 +244,7 @@ export default function ControlScreen() {
                                             title="ON" 
                                             onPress={() => {
                                                 setSliderValue2(MAX_VALUE);
-                                                sendMessage("LedRojo 255");
+                                                sendMessage(`LedRojo ${MAX_VALUE}`);
                                             }}
                                             color={ledRedColor}
                                         />
@@ -318,7 +318,8 @@ export default function ControlScreen() {
                                         title="MÁXIMO" 
                                         onPress={() => {
                                             setSliderValue3(MAX_VALUE);
-                                            sendMessage("BombaDeAgua 255");
+                                            sendMessage(`BombaDeAgua ${MAX_VALUE}`);
+
                                         }}
                                         color={pumpColor}
                                     />
