@@ -73,12 +73,6 @@ export default function ControlScreen() {
     return (
         <ParallaxScrollView
             headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
-            headerImage={
-                <Image
-                    source={require("@/assets/images/partial-react-logo.png")}
-                    style={styles.reactLogo}
-                />
-            }
         >
             <View style={[styles.container, { backgroundColor }]}>
                 <View style={styles.header}>
@@ -325,7 +319,7 @@ export default function ControlScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingTop: 60,
+        paddingTop: 40,
         padding: 16,
         alignItems: "center",
     },
