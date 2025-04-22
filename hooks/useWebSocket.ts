@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 // const WS_SERVER = "ws://192.168.1.248:10000/ws"; // localhost
 const WS_SERVER = "wss://servidorhydroplas.onrender.com/ws"; // servidor remoto
@@ -13,97 +13,176 @@ interface SystemState {
     bombaAgua: number;
 }
 
+// Mantener una única instancia global del estado
+let globalStatus = "Desconectado";
+let globalWebSocket: WebSocket | null = null;
+let globalSystemState: SystemState = {
+    timestamp: "",
+    temperatura: 0,
+    iluminancia: 0,
+    nivelAgua: 0,
+    ledRojo: 0,
+    ledAzul: 0,
+    bombaAgua: 0
+};
+
+// Configuración de reconexión
+const RECONNECT_INTERVAL = 5000; // Intentar reconectar cada 5 segundos
+const MAX_RECONNECT_ATTEMPTS = 3; // Máximo número de intentos de reconexión
+let reconnectAttempts = 0;
+let reconnectTimer: NodeJS.Timeout | null = null;
+
+// Array de callbacks para notificar cambios
+const statusListeners: ((status: string) => void)[] = [];
+const systemStateListeners: ((state: SystemState) => void)[] = [];
+
 export default function useWebSocket() {
-    const [status, setStatus] = useState("Desconectado");
-    const [messages, setMessages] = useState<string[]>([]);
-    const [systemState, setSystemState] = useState<SystemState>({
-        timestamp: "",
-        temperatura: 0,
-        iluminancia: 0,
-        nivelAgua: 0,
-        ledRojo: 0,
-        ledAzul: 0,
-        bombaAgua: 0
-    });
-    const websocketRef = useRef<WebSocket | null>(null);
+    const [status, setStatus] = useState(globalStatus);
+    const [systemState, setSystemState] = useState<SystemState>(globalSystemState);
+
+    useEffect(() => {
+        // Registrar listeners
+        const statusCallback = (newStatus: string) => setStatus(newStatus);
+        const stateCallback = (newState: SystemState) => setSystemState(newState);
+        
+        statusListeners.push(statusCallback);
+        systemStateListeners.push(stateCallback);
+
+        // Actualizar estado inicial si ya está conectado
+        if (globalWebSocket && globalWebSocket.readyState === WebSocket.OPEN) {
+            setStatus("Conectado");
+            setSystemState(globalSystemState);
+        }
+
+        // Cleanup
+        return () => {
+            const statusIndex = statusListeners.indexOf(statusCallback);
+            const stateIndex = systemStateListeners.indexOf(stateCallback);
+            if (statusIndex > -1) statusListeners.splice(statusIndex, 1);
+            if (stateIndex > -1) systemStateListeners.splice(stateIndex, 1);
+        };
+    }, []);
+
+    const updateStatus = (newStatus: string) => {
+        globalStatus = newStatus;
+        statusListeners.forEach(listener => listener(newStatus));
+    };
+
+    const updateSystemState = (newState: SystemState) => {
+        globalSystemState = newState;
+        systemStateListeners.forEach(listener => listener(newState));
+    };
+
+    const scheduleReconnect = () => {
+        if (reconnectTimer) {
+            clearTimeout(reconnectTimer);
+        }
+
+        if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            console.log(`🔄 Intentando reconectar... (intento ${reconnectAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})`);
+            reconnectTimer = setTimeout(() => {
+                reconnectAttempts++;
+                connectWebSocket();
+            }, RECONNECT_INTERVAL);
+        } else {
+            console.log("❌ Máximo número de intentos de reconexión alcanzado");
+            updateStatus("Error");
+            reconnectAttempts = 0; // Resetear para futuros intentos manuales
+        }
+    };
 
     const connectWebSocket = () => {
-        if (
-            websocketRef.current &&
-            websocketRef.current.readyState === WebSocket.OPEN
-        ) {
+        if (globalWebSocket?.readyState === WebSocket.OPEN) {
             console.log("✅ WebSocket ya está conectado");
             return;
         }
 
-        setStatus("Conectando...");
+        // Limpiar cualquier temporizador de reconexión existente
+        if (reconnectTimer) {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = null;
+        }
+
+        updateStatus("Conectando...");
         const websocket = new WebSocket(WS_SERVER);
 
         websocket.onopen = () => {
             console.log("✅ Conectado al ESP32");
-            setStatus("Conectado");
+            updateStatus("Conectado");
             websocket.send("clienteWeb");
+            reconnectAttempts = 0; // Resetear contador de intentos al conectar exitosamente
         };
 
         websocket.onmessage = (event) => {
-            console.log("📩 Mensaje recibido:", event.data);
             try {
                 const data = JSON.parse(event.data);
-                // Verificar que el mensaje tenga el formato correcto
                 if (
                     data.timestamp &&
                     typeof data.temperatura === 'number' &&
                     typeof data.iluminancia === 'number' &&
-                    typeof data.nivelAgua === 'number' &&
-                    typeof data.ledRojo === 'number' &&
-                    typeof data.ledAzul === 'number' &&
-                    typeof data.bombaAgua === 'number'
+                    typeof data.nivel_agua === 'number' &&
+                    typeof data.led_rojo === 'number' &&
+                    typeof data.led_azul === 'number' &&
+                    typeof data.bomba_agua === 'number'
                 ) {
-                    setSystemState(data);
+                    updateSystemState({
+                        timestamp: data.timestamp,
+                        temperatura: data.temperatura,
+                        iluminancia: data.iluminancia,
+                        nivelAgua: data.nivel_agua,
+                        ledRojo: data.led_rojo,
+                        ledAzul: data.led_azul,
+                        bombaAgua: data.bomba_agua
+                    });
                 }
             } catch (error) {
                 console.error("Error parsing message:", error);
             }
-            setMessages((prev) => [...prev, event.data]);
         };
 
         websocket.onerror = (error) => {
             console.error("❌ Error WebSocket:", error);
-            setStatus("Error");
+            updateStatus("Error");
+            scheduleReconnect();
         };
 
         websocket.onclose = () => {
             console.log("🔌 WebSocket cerrado");
-            setStatus("Desconectado");
+            updateStatus("Desconectado");
+            scheduleReconnect();
         };
 
-        websocketRef.current = websocket;
+        globalWebSocket = websocket;
     };
 
     const disconnectWebSocket = () => {
-        if (websocketRef.current) {
-            websocketRef.current.close();
-            websocketRef.current = null;
-            setStatus("Desconectado manualmente");
+        // Limpiar cualquier temporizador de reconexión
+        if (reconnectTimer) {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = null;
+        }
+        reconnectAttempts = 0; // Resetear intentos
+
+        if (globalWebSocket) {
+            globalWebSocket.close();
+            globalWebSocket = null;
+            updateStatus("Desconectado manualmente");
         }
     };
 
     const sendMessage = (message: string) => {
-        if (
-            websocketRef.current &&
-            websocketRef.current.readyState === WebSocket.OPEN
-        ) {
+        if (globalWebSocket?.readyState === WebSocket.OPEN) {
             console.log("📤 Enviando mensaje:", message);
-            websocketRef.current.send(message);
+            globalWebSocket.send(message);
         } else {
             console.warn("⚠️ WebSocket no está conectado.");
-            setStatus("Error: No conectado");
+            updateStatus("Error: No conectado");
         }
     };
 
     return {
         status,
-        messages,
+        messages: [], // Ya no necesitamos mantener historial de mensajes
         connectWebSocket,
         disconnectWebSocket,
         sendMessage,
