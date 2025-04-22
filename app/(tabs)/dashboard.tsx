@@ -166,7 +166,7 @@ export default function DashboardScreen() {
             <View style={[styles.container, { backgroundColor }]}>
                 <View style={styles.header}>
                     <Text style={[styles.title, { color: textColor }]}>
-                        📊 Monitor en Tiempo Real
+                        📊 Monitor en Tiempo Real.
                     </Text>
                     <Text style={[styles.subtitle, { color: secondaryTextColor }]}>
                         Sistema Hidropónico
