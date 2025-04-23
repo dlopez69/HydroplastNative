@@ -116,23 +116,27 @@ export default function useWebSocket() {
         websocket.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
+                console.log("📥 Mensaje recibido:", data);
+                
                 if (
                     data.timestamp &&
                     typeof data.temperatura === 'number' &&
                     typeof data.iluminancia === 'number' &&
-                    typeof data.nivel_agua === 'number' &&
-                    typeof data.led_rojo === 'number' &&
-                    typeof data.led_azul === 'number' &&
-                    typeof data.bomba_agua === 'number'
+                    // Cambiar para aceptar las claves en snake_case
+                    typeof data.nivelAgua === 'number' &&
+                    typeof data.ledRojo === 'number' &&
+                    typeof data.ledAzul === 'number' &&
+                    typeof data.bombaAgua === 'number'
                 ) {
                     updateSystemState({
                         timestamp: data.timestamp,
                         temperatura: data.temperatura,
                         iluminancia: data.iluminancia,
-                        nivelAgua: data.nivel_agua,
-                        ledRojo: data.led_rojo,
-                        ledAzul: data.led_azul,
-                        bombaAgua: data.bomba_agua
+                        // Asignar valores de snake_case a camelCase
+                        nivelAgua: data.nivelAgua,
+                        ledRojo: data.ledRojo,
+                        ledAzul: data.ledAzul,
+                        bombaAgua: data.bombaAgua
                     });
                 }
             } catch (error) {

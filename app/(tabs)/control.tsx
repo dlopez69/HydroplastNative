@@ -7,7 +7,6 @@ import useWebSocket from "@/hooks/useWebSocket";
 import ParallaxScrollView from "@/components/ParallaxScrollView";
 import OperationModes from "@/components/OperationModes";
 
-
 const { width } = Dimensions.get("window");
 const cardWidth = width > 600 ? "30%" : "46%"; // Adapta para tablets/phones
 const MAX_VALUE = 4095;
@@ -40,9 +39,17 @@ export default function ControlScreen() {
 
     // Actualizar los sliders cuando cambie systemState
     useEffect(() => {
-        setSliderValue1(systemState.ledAzul);
-        setSliderValue2(systemState.ledRojo);
-        setSliderValue3(systemState.bombaAgua);
+        // console.log("🔄 Actualizando sliders con datos del servidor:", systemState);
+
+        
+        // Los valores del servidor vienen entre 0 y 1, multiplicar por MAX_VALUE
+        const newLedAzulValue = Math.floor(systemState.ledAzul * MAX_VALUE);
+        const newLedRojoValue = Math.floor(systemState.ledRojo * MAX_VALUE);
+        const newBombaAguaValue = Math.floor(systemState.bombaAgua * MAX_VALUE);
+
+        setSliderValue1(newLedAzulValue);
+        setSliderValue2(newLedRojoValue);
+        setSliderValue3(newBombaAguaValue);
     }, [systemState]);
 
     useEffect(() => {
