@@ -3,7 +3,7 @@ import { useTheme } from "@/hooks/ThemeContext";
 import { useThemeColor } from "@/hooks/useThemeColor";
 
 const { width } = Dimensions.get("window");
-const cardWidth = width > 600 ? "30%" : "46%";
+const cardWidth = width > 600 ? "31%" : "48%";
 
 interface MetricCardProps {
   icon: string;

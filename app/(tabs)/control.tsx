@@ -320,17 +320,16 @@ export default function ControlScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingTop: 40,
-        padding: 16,
+        paddingTop: 30,
         alignItems: "center",
     },
-    header: {
+    header: {   
         width: '100%',
         alignItems: 'center',
         marginBottom: 24,
     },
     operationModesWrapper: {
-        marginBottom: 54,
+        marginBottom: 60,
         width: '100%',
     },
     title: {
@@ -408,13 +407,13 @@ const styles = StyleSheet.create({
     },
     slider: {
         width: '100%',
-        height: 40,
+        height: 10,
         marginVertical: 8,
     },
     buttonRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        width: '100%',
+        width: '90%',
         marginTop: 8,
     },
     progressBarContainer: {
