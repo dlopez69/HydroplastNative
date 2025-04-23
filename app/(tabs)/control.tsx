@@ -84,11 +84,9 @@ export default function ControlScreen() {
                     </Text>
                 </View>
 
-				<OperationModes 
-					onModeChange={(mode) => {
-
-					}}
-				/>
+                <View style={styles.operationModesWrapper}>
+                    <OperationModes/>
+                </View>
 
                 <View style={styles.metricsSection}>
                     <Text style={[styles.sectionTitle, { color: textColor }]}>
@@ -334,6 +332,10 @@ const styles = StyleSheet.create({
         width: '100%',
         alignItems: 'center',
         marginBottom: 24,
+    },
+    operationModesWrapper: {
+        marginBottom: 24,
+        width: '100%',
     },
     title: {
         fontSize: 26,

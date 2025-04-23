@@ -1,35 +1,39 @@
 import { Tabs } from "expo-router";
 import React from "react";
 import { Platform } from "react-native";
-
 import { HapticTab } from "@/components/HapticTab";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import TabBarBackground from "@/components/ui/TabBarBackground";
 import { Colors } from "@/constants/Colors";
-import { ThemeProvider, useTheme } from "@/hooks/ThemeContext"; // 🔥 Importamos el ThemeProvider
+import { ThemeProvider, useTheme } from "@/hooks/ThemeContext";
 
 function TabLayout() {
-	const { theme } = useTheme(); // 🔥 Ahora usa el tema en tiempo real
+	const { theme } = useTheme();
 
 	return (
 		<Tabs
 			screenOptions={{
-				tabBarActiveTintColor: Colors[theme ?? "light"].tint, // 🔥 Cambia con el tema en tiempo real
+				tabBarActiveTintColor: Colors[theme].tint,
+				tabBarInactiveTintColor: Colors[theme].tabIconDefault,
 				headerShown: false,
 				tabBarButton: HapticTab,
 				tabBarBackground: TabBarBackground,
-				tabBarStyle: Platform.select({
-					ios: { position: "absolute" },
-					default: {},
-				}),
+				tabBarStyle: {
+					...Platform.select({
+						ios: { position: "absolute" },
+						default: {},
+					}),
+					backgroundColor: theme === 'dark' ? Colors.dark.background : Colors.light.background,
+					borderTopColor: theme === 'dark' ? '#333333' : '#E5E5E5',
+				},
 			}}
 		>
 			<Tabs.Screen
 				name="index"
 				options={{
 					title: "Inicio",
-					tabBarIcon: ({ color }) => (
-						<IconSymbol size={28} name="house.fill" color={color} />
+					tabBarIcon: ({ color, size }) => (
+						<IconSymbol size={size} name="house.fill" color={color} />
 					),
 				}}
 			/>
@@ -37,8 +41,8 @@ function TabLayout() {
 				name="dashboard"
 				options={{
 					title: "Dashboard",
-					tabBarIcon: ({ color }) => (
-						<IconSymbol size={28} name="chart.bar.fill" color={color} />
+					tabBarIcon: ({ color, size }) => (
+						<IconSymbol size={size} name="chart.bar.fill" color={color} />
 					),
 				}}
 			/>
@@ -46,8 +50,8 @@ function TabLayout() {
 				name="control"
 				options={{
 					title: "Control",
-					tabBarIcon: ({ color }) => (
-						<IconSymbol size={28} name="power" color={color} />
+					tabBarIcon: ({ color, size }) => (
+						<IconSymbol size={size} name="power" color={color} />
 					),
 				}}
 			/>
@@ -55,8 +59,8 @@ function TabLayout() {
 				name="settings"
 				options={{
 					title: "Configuración",
-					tabBarIcon: ({ color }) => (
-						<IconSymbol size={28} name="gearshape.fill" color={color} />
+					tabBarIcon: ({ color, size }) => (
+						<IconSymbol size={size} name="gearshape.fill" color={color} />
 					),
 				}}
 			/>
@@ -64,7 +68,6 @@ function TabLayout() {
 	);
 }
 
-// 🔥 Envolver toda la app con ThemeProvider
 export default function RootLayout() {
 	return (
 		<ThemeProvider>

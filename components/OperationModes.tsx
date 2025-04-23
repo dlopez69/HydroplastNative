@@ -82,7 +82,8 @@ export default function OperationModes({ onModeChange }: OperationModesProps) {
 const styles = StyleSheet.create({
     modesSection: {
         width: "100%",
-        marginBottom: 32,
+        marginBottom: 24,
+        paddingHorizontal: 8,
     },
     sectionTitle: {
         fontSize: 20,
@@ -109,6 +110,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
+        marginBottom: 8,
     },
     modeButtonText: {
         fontSize: 16,
