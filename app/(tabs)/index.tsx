@@ -34,11 +34,11 @@ export default function HomeScreen() {
 
                 <ConnectionPanel showInstructions={false} />
 
-                <OperationModes 
-                    onModeChange={(mode) => {
+                
 
-                    }}
-                />
+                <View style={styles.operationModesWrapper}>
+                    <OperationModes/>
+                </View>
 
                 {/* Instrucciones Desplegables */}
                 <View style={styles.instructionsSection}>
@@ -98,6 +98,10 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
         marginBottom: 16,
         textAlign: "center",
+    },
+    operationModesWrapper: {
+        marginBottom: 54,
+        width: '100%',
     },
     text: {
         fontSize: 16,

@@ -6,6 +6,7 @@ import { useTheme } from "@/hooks/ThemeContext";
 import useWebSocket from "@/hooks/useWebSocket";
 import ParallaxScrollView from "@/components/ParallaxScrollView";
 import OperationModes from "@/components/OperationModes";
+import ConnectionPanel from "@/components/ConnectionPanel";
 
 const { width } = Dimensions.get("window");
 const cardWidth = width > 600 ? "30%" : "46%"; // Adapta para tablets/phones
@@ -41,15 +42,10 @@ export default function ControlScreen() {
     useEffect(() => {
         // console.log("🔄 Actualizando sliders con datos del servidor:", systemState);
 
-        
-        // Los valores del servidor vienen entre 0 y 1, multiplicar por MAX_VALUE
-        const newLedAzulValue = Math.floor(systemState.ledAzul * MAX_VALUE);
-        const newLedRojoValue = Math.floor(systemState.ledRojo * MAX_VALUE);
-        const newBombaAguaValue = Math.floor(systemState.bombaAgua * MAX_VALUE);
 
-        setSliderValue1(newLedAzulValue);
-        setSliderValue2(newLedRojoValue);
-        setSliderValue3(newBombaAguaValue);
+        setSliderValue1(systemState.ledAzul);
+        setSliderValue2(systemState.ledRojo);
+        setSliderValue3(systemState.bombaAgua);
     }, [systemState]);
 
     useEffect(() => {
@@ -64,7 +60,7 @@ export default function ControlScreen() {
         return (
 			
             <View style={[styles.container, { backgroundColor }]}>
-				
+				<ConnectionPanel showInstructions={false} />
                 <View style={styles.notConnectedMessage}>
                     <Text style={[styles.title, { color: textColor }]}>
                         ⚠️ Sistema Desconectado
@@ -328,20 +324,13 @@ const styles = StyleSheet.create({
         padding: 16,
         alignItems: "center",
     },
-    reactLogo: {
-        height: 178,
-        width: 290,
-        bottom: 0,
-        left: 0,
-        position: "absolute",
-    },
     header: {
         width: '100%',
         alignItems: 'center',
         marginBottom: 24,
     },
     operationModesWrapper: {
-        marginBottom: 24,
+        marginBottom: 54,
         width: '100%',
     },
     title: {
@@ -429,7 +418,7 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     progressBarContainer: {
-        height: 8,
+        height: 10,
         width: '100%',
         backgroundColor: '#E0E0E0',
         borderRadius: 4,
