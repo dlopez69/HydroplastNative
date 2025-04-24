@@ -30,6 +30,7 @@ export default function DashboardScreen() {
 		ledRojo: 0,
 		ledAzul: 0,
 		bombaAgua: 0,
+		particulasAgua: 0,
 	});
 
 	const [loading, setLoading] = useState(true);
@@ -62,10 +63,11 @@ export default function DashboardScreen() {
 				timestamp: data.timestamp,
 				temperatura: data.temperatura,
 				iluminancia: data.iluminancia,
-				nivelAgua: data.nivel_agua,
-				ledRojo: data.led_rojo,
-				ledAzul: data.led_azul,
-				bombaAgua: data.bomba_agua,
+				nivelAgua: data.nivelAgua,
+				ledRojo: data.ledRojo,
+				ledAzul: data.ledAzul,
+				bombaAgua: data.bombaAgua,
+				particulasAgua: data.particulasAgua,
 			});
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : String(err);
@@ -226,6 +228,21 @@ export default function DashboardScreen() {
 									color={waterColor}
 									showProgressBar={true}
 									progressValue={systemState.nivelAgua}
+								/>
+
+								<MetricCard
+									icon="🔍"
+									title="Partículas"
+									value={systemState.particulasAgua}
+									unit=" PPM"
+									color={waterColor}
+									status={
+										systemState.particulasAgua > 500
+											? "⚠️ Alto"
+											: systemState.particulasAgua > 300
+											? "⚡ Moderado"
+											: "✓ Normal"
+									}
 								/>
 
 								<MetricCard
