@@ -31,6 +31,7 @@ export default function DashboardScreen() {
 		ledAzul: 0,
 		bombaAgua: 0,
 		particulasAgua: 0,
+		operationalMode: "automatic", // Add operational mode
 	});
 
 	const [loading, setLoading] = useState(true);
@@ -68,6 +69,7 @@ export default function DashboardScreen() {
 				ledAzul: data.ledAzul,
 				bombaAgua: data.bombaAgua,
 				particulasAgua: data.particulasAgua,
+				operationalMode: systemState.operationalMode, // Preserve the current operational mode
 			});
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : String(err);
