@@ -1,6 +1,8 @@
-import { View, Text, StyleSheet, Dimensions } from "react-native";
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import { useThemeColor } from "@/hooks/useThemeColor";
+import { useState } from "react";
+import HistoryModal from "./HistoryModal";
 
 const { width } = Dimensions.get("window");
 const cardWidth = width > 600 ? "31%" : "48%";
@@ -17,6 +19,7 @@ interface MetricCardProps {
   isToggleableComponent?: boolean;
   isActive?: boolean;
   statusText?: string;
+  metricKey?: string; // Nueva prop para identificar la métrica en la API
 }
 
 export default function MetricCard({
@@ -31,76 +34,103 @@ export default function MetricCard({
   isToggleableComponent = false,
   isActive = false,
   statusText,
+  metricKey,
 }: MetricCardProps) {
   const { theme } = useTheme();
   const secondaryTextColor = useThemeColor({}, "tabIconDefault");
   const cardBackground = theme === "dark" ? "#1F1F1F" : "#F7F9FC";
   const cardBorderColor = theme === "dark" ? "#2D2D2D" : "#E0E5EC";
+  const [showModal, setShowModal] = useState(false);
+
+  const handlePress = () => {
+    if (metricKey) {
+      setShowModal(true);
+    }
+  };
 
   return (
-    <View
-      style={[
-        styles.card,
-        {
-          backgroundColor: cardBackground,
-          borderColor: cardBorderColor,
-        },
-      ]}
-    >
-      <View
+    <>
+      <TouchableOpacity
+        onPress={handlePress}
+        disabled={!metricKey}
         style={[
-          styles.cardHeader,
+          styles.card,
           {
-            backgroundColor: theme === "dark" ? "#2A2A2A" : "#f0f3f8",
+            backgroundColor: cardBackground,
+            borderColor: cardBorderColor,
           },
         ]}
       >
-        <Text style={[styles.cardIcon, { color }]}>{icon}</Text>
-      </View>
-      <View style={styles.cardBody}>
-        <Text style={[styles.cardTitle, { color: secondaryTextColor }]}>
-          {title}
-        </Text>
-        <Text style={[styles.cardValue, { color }]}>
-          {typeof value === "number" ? `${value}${unit}` : value}
-        </Text>
-
-        {status && (
-          <Text style={[styles.cardStatus, { color: secondaryTextColor }]}>
-            {status}
+        <View
+          style={[
+            styles.cardHeader,
+            {
+              backgroundColor: theme === "dark" ? "#2A2A2A" : "#f0f3f8",
+            },
+          ]}
+        >
+          <Text style={[styles.cardIcon, { color }]}>{icon}</Text>
+        </View>
+        <View style={styles.cardBody}>
+          <Text style={[styles.cardTitle, { color: secondaryTextColor }]}>
+            {title}
           </Text>
-        )}
+          <Text style={[styles.cardValue, { color }]}>
+            {typeof value === "number" ? `${value}${unit}` : value}
+          </Text>
 
-        {showProgressBar && (
-          <View style={styles.progressBarContainer}>
+          {status && (
+            <Text style={[styles.cardStatus, { color: secondaryTextColor }]}>
+              {status}
+            </Text>
+          )}
+
+          {showProgressBar && (
+            <View style={styles.progressBarContainer}>
+              <View
+                style={[
+                  styles.progressBar,
+                  {
+                    width: `${Math.min(100, Math.max(0, progressValue))}%`,
+                    backgroundColor: color,
+                  },
+                ]}
+              />
+            </View>
+          )}
+
+          {isToggleableComponent && (
             <View
               style={[
-                styles.progressBar,
+                styles.statusIndicator,
                 {
-                  width: `${Math.min(100, Math.max(0, progressValue))}%`,
-                  backgroundColor: color,
+                  backgroundColor: isActive ? color : "#DDD",
                 },
               ]}
-            />
-          </View>
-        )}
+            >
+              <Text style={styles.statusIndicatorText}>
+                {statusText || (isActive ? "ENCENDIDO" : "APAGADO")}
+              </Text>
+            </View>
+          )}
 
-        {isToggleableComponent && (
-          <View
-            style={[
-              styles.statusIndicator,
-              {
-                backgroundColor: isActive ? color : "#DDD",
-              },
-            ]}
-          >
-            <Text style={styles.statusIndicatorText}>
-              {statusText || (isActive ? "ENCENDIDO" : "APAGADO")}
+          {metricKey && (
+            <Text style={[styles.viewHistory, { color: secondaryTextColor }]}>
+              Toca para ver historial
             </Text>
-          </View>
-        )}
-      </View>
-    </View>
+          )}
+        </View>
+      </TouchableOpacity>
+
+      <HistoryModal
+        visible={showModal}
+        onClose={() => setShowModal(false)}
+        title={`Historial de ${title}`}
+        color={color}
+        metric={metricKey || ''}
+        unit={unit}
+      />
+    </>
   );
 }
 
@@ -166,5 +196,10 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 10,
     fontWeight: "bold",
+  },
+  viewHistory: {
+    fontSize: 10,
+    marginTop: 8,
+    fontStyle: 'italic',
   },
 });

@@ -198,6 +198,7 @@ export default function DashboardScreen() {
 											? "❄️ Baja"
 											: "✓ Normal"
 									}
+									metricKey="temperatura"
 								/>
 
 								<MetricCard
@@ -213,6 +214,7 @@ export default function DashboardScreen() {
 											? "🌤️ Adecuada"
 											: "🌥️ Baja"
 									}
+									metricKey="iluminancia"
 								/>
 							</View>
 						</View>
@@ -230,6 +232,7 @@ export default function DashboardScreen() {
 									color={waterColor}
 									showProgressBar={true}
 									progressValue={systemState.nivelAgua}
+									metricKey="nivelAgua"
 								/>
 
 								<MetricCard
@@ -245,6 +248,7 @@ export default function DashboardScreen() {
 											? "⚡ Moderado"
 											: "✓ Normal"
 									}
+									metricKey="particulasAgua"
 								/>
 
 								<MetricCard
@@ -271,6 +275,7 @@ export default function DashboardScreen() {
 									color={ledBlueColor}
 									isToggleableComponent={true}
 									isActive={systemState.ledAzul > 0}
+									metricKey="ledAzul"
 								/>
 
 								<MetricCard
@@ -280,6 +285,7 @@ export default function DashboardScreen() {
 									color={ledRedColor}
 									isToggleableComponent={true}
 									isActive={systemState.ledRojo > 0}
+									metricKey="ledRojo"
 								/>
 							</View>
 						</View>
