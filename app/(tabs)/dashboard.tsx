@@ -259,6 +259,8 @@ export default function DashboardScreen() {
 									isToggleableComponent={true}
 									isActive={systemState.bombaAgua > 0}
 									statusText={systemState.bombaAgua > 0 ? "ACTIVA" : "INACTIVA"}
+									metricKey="bombaAgua"
+									unit="%"
 								/>
 							</View>
 						</View>
