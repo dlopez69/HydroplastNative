@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions, ScrollView } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { Modal, View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions, ScrollView, PanResponder, GestureResponderEvent } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 import { useTheme } from '@/hooks/ThemeContext';
 import { useThemeColor } from '@/hooks/useThemeColor';
@@ -19,10 +19,19 @@ interface DataPoint {
   value: number;
 }
 
+// Definición para el tooltip
+interface TooltipData {
+  value: number;
+  timestamp: string;
+  index: number;
+  x: number;
+  y: number;
+}
+
 const { width, height } = Dimensions.get('window');
 const modalWidth = width * 0.95;
 const modalHeight = height * 0.8;
-const chartWidth = modalWidth - 60;
+const chartWidth = modalWidth - 40; // Ajustado para mejorar espacio disponible
 const chartHeight = Math.min(modalHeight * 0.4, 220);
 const MAX_DATA_POINTS = 100;
 const REAL_TIME_MAX_POINTS = 10;
@@ -35,8 +44,16 @@ const chartConfig = {
   fillShadowGradientOpacity: 0.1,
   decimalPlaces: 1,
   propsForLabels: {
-    fontSize: 10,
+    fontSize: 12,
   },
+  yAxisInterval: 1,
+  yAxisSuffix: '',
+  yAxisLabel: '',
+  formatYLabel: (value: string) => value,
+  paddingLeft: 40,
+  paddingRight: 20,
+  paddingTop: 10,
+  paddingBottom: 10,
 };
 
 export default function HistoryModal({ visible, onClose, title, color, metric, unit }: HistoryModalProps) {
@@ -53,9 +70,13 @@ export default function HistoryModal({ visible, onClose, title, color, metric, u
   const [realtimeInterval, setRealtimeInterval] = useState<NodeJS.Timeout | null>(null);
   const [chartReady, setChartReady] = useState(false);
 
-  // Separar los datos de tiempo real de los datos históricos
   const [realtimeData, setRealtimeData] = useState<DataPoint[]>([]);
   const [historicalData, setHistoricalData] = useState<DataPoint[]>([]);
+
+  const [tooltipData, setTooltipData] = useState<TooltipData | null>(null);
+  
+  const chartRef = useRef(null);
+  const [isTouchActive, setIsTouchActive] = useState(false);
 
   const getCurrentValue = () => {
     const currentData = timeRange === 'realtime' ? realtimeData : historicalData;
@@ -65,18 +86,15 @@ export default function HistoryModal({ visible, onClose, title, color, metric, u
     return `${lastDataPoint.value.toFixed(1)}${unit}`;
   };
 
-  // Efecto para manejar la visibilidad del modal
   useEffect(() => {
     if (visible) {
       setLoading(true);
       setError(null);
       setChartError(null);
       setChartReady(false);
-      // Iniciar en modo tiempo real
       setTimeRange('realtime');
       fetchRealtimeData(true);
     } else {
-      // Limpiar estados cuando se cierra el modal
       if (realtimeInterval) {
         clearInterval(realtimeInterval);
         setRealtimeInterval(null);
@@ -87,7 +105,6 @@ export default function HistoryModal({ visible, onClose, title, color, metric, u
     }
   }, [visible]);
 
-  // Efecto para manejar cambios en el timeRange
   useEffect(() => {
     if (visible && metric) {
       if (timeRange === 'realtime') {
@@ -133,12 +150,10 @@ export default function HistoryModal({ visible, onClose, title, color, metric, u
       setChartReady(true);
       setLoading(false);
 
-      // Limpiar intervalo existente si hay uno
       if (realtimeInterval) {
         clearInterval(realtimeInterval);
       }
 
-      // Configurar nuevo intervalo para datos en tiempo real
       const interval = setInterval(async () => {
         try {
           const lastReadingResponse = await fetch('https://servidorhydroplas.onrender.com/api/last-reading');
@@ -211,7 +226,6 @@ export default function HistoryModal({ visible, onClose, title, color, metric, u
       const result = await response.json();
       if (!isMounted) return;
 
-      // Filtrar y validar datos
       const validData = result
         .filter((item: any) => 
           item && 
@@ -225,12 +239,10 @@ export default function HistoryModal({ visible, onClose, title, color, metric, u
           value: item[metric] || 0
         }));
 
-      // Reducir puntos si hay demasiados
       let processedData = validData;
       if (validData.length > MAX_DATA_POINTS) {
         const step = Math.floor(validData.length / MAX_DATA_POINTS);
         processedData = validData.filter((_, index) => index % step === 0);
-        // Asegurar que incluimos el último punto
         if (validData.length > 0) {
           processedData.push(validData[validData.length - 1]);
         }
@@ -254,7 +266,6 @@ export default function HistoryModal({ visible, onClose, title, color, metric, u
       const currentData = timeRange === 'realtime' ? realtimeData : historicalData;
       if (!currentData || currentData.length === 0) return null;
 
-      // Validar y limpiar datos antes de renderizar
       const validData = currentData.filter(item => 
         item && 
         item.timestamp && 
@@ -267,11 +278,16 @@ export default function HistoryModal({ visible, onClose, title, color, metric, u
         throw new Error('No hay datos válidos para mostrar');
       }
 
-      // Preparar datos seguros para la gráfica
       const chartData = {
-        labels: validData.map(item => {
+        labels: validData.map((item, index) => {
           try {
             const date = new Date(item.timestamp);
+            if (validData.length > 20) {
+              if (index % Math.ceil(validData.length / 5) !== 0) {
+                return '';
+              }
+            }
+            
             if (timeRange === 'realtime') {
               return `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
             } else if (timeRange === '1d') {
@@ -289,9 +305,74 @@ export default function HistoryModal({ visible, onClose, title, color, metric, u
         }]
       };
 
+      const panResponder = PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponderCapture: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponderCapture: () => true,
+        onPanResponderGrant: (evt) => {
+          handleTouch(evt);
+          setIsTouchActive(true);
+        },
+        onPanResponderMove: (evt) => {
+          handleTouch(evt);
+        },
+        onPanResponderRelease: () => {
+          setIsTouchActive(false);
+          setTimeout(() => {
+            if (!isTouchActive) {
+              setTooltipData(null);
+            }
+          }, 1500);
+        },
+        onPanResponderTerminate: () => {
+          setIsTouchActive(false);
+          setTooltipData(null);
+        },
+      });
+
+      const handleTouch = (evt: GestureResponderEvent) => {
+        try {
+          const { locationX } = evt.nativeEvent;
+          
+          const paddingLeft = 55;
+          const chartInnerWidth = chartWidth - paddingLeft - 25;
+          
+          if (locationX >= paddingLeft && locationX <= chartWidth - 25) {
+            const touchPositionNormalized = (locationX - paddingLeft) / chartInnerWidth;
+            
+            const dataIndex = Math.min(
+              Math.round(touchPositionNormalized * (validData.length - 1)),
+              validData.length - 1
+            );
+            
+            const nearestDataPoint = validData[dataIndex];
+            
+            const xPos = paddingLeft + (dataIndex / (validData.length - 1)) * chartInnerWidth;
+            
+            const minValue = Math.min(...validData.map(d => d.value));
+            const maxValue = Math.max(...validData.map(d => d.value));
+            const valueRange = maxValue - minValue;
+            const valueNormalized = (nearestDataPoint.value - minValue) / (valueRange === 0 ? 1 : valueRange);
+            const yPos = chartHeight - (valueNormalized * (chartHeight - 40)) - 20;
+            
+            setTooltipData({
+              value: nearestDataPoint.value,
+              timestamp: nearestDataPoint.timestamp,
+              index: dataIndex,
+              x: xPos,
+              y: yPos,
+            });
+          }
+        } catch (error) {
+          console.error("Error al procesar el toque en la gráfica:", error);
+        }
+      };
+
       return (
-        <View style={styles.chartWrapper}>
+        <View style={styles.chartWrapper} {...panResponder.panHandlers}>
           <LineChart
+            ref={chartRef}
             data={chartData}
             width={chartWidth}
             height={chartHeight}
@@ -310,18 +391,66 @@ export default function HistoryModal({ visible, onClose, title, color, metric, u
               propsForLabels: {
                 fontSize: 10,
                 fontWeight: '400'
-              }
+              },
+              propsForBackgroundLines: {
+                strokeDasharray: '',
+                strokeWidth: 1,
+                stroke: theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+              },
+              paddingLeft: 55,
+              paddingRight: 25,
+              paddingTop: 20,
+              paddingBottom: 15,
+              formatYLabel: (value) => {
+                const num = parseFloat(value);
+                return Number.isInteger(num) ? num.toString() : num.toFixed(1);
+              },
             }}
             bezier
             style={styles.chart}
             withDots={validData.length < 50}
-            withInnerLines={false}
+            withInnerLines={true}
             withOuterLines={true}
             withVerticalLabels={true}
             withHorizontalLabels={true}
+            withVerticalLines={false}
+            withHorizontalLines={true}
             yAxisSuffix={unit}
-            onDataPointClick={() => {}}
+            yAxisInterval={4}
+            onDataPointClick={(data) => {
+              setTooltipData({
+                value: data.value,
+                timestamp: validData[data.index].timestamp,
+                index: data.index,
+                x: data.x,
+                y: data.y,
+              });
+            }}
+            decorator={() => {
+              return tooltipData ? (
+                <View
+                  style={[
+                    styles.tooltipIndicator,
+                    {
+                      left: tooltipData.x - 1,
+                      top: 0,
+                      height: chartHeight - 20,
+                    },
+                  ]}
+                />
+              ) : null;
+            }}
           />
+          {tooltipData && (
+            <View style={[styles.tooltip, { top: tooltipData.y - 50, left: Math.max(8, Math.min(modalWidth - 130, tooltipData.x - 50)) }]}>
+              <Text style={styles.tooltipText}>
+                {tooltipData.value.toFixed(1)}{unit}
+              </Text>
+              <Text style={styles.tooltipText}>
+                {new Date(tooltipData.timestamp).toLocaleString()}
+              </Text>
+            </View>
+          )}
         </View>
       );
     } catch (err) {
@@ -622,6 +751,7 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     borderRadius: 16,
     paddingRight: 40,
+    paddingLeft: 10,
     paddingTop: 10,
     paddingBottom: 10,
   },
@@ -635,5 +765,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     marginBottom: 4,
+  },
+  tooltip: {
+    position: 'absolute',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 8,
+    borderRadius: 5,
+    alignItems: 'center',
+    minWidth: 120,
+  },
+  tooltipText: {
+    color: 'white',
+    fontSize: 12,
+  },
+  tooltipIndicator: {
+    position: 'absolute',
+    width: 2,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
 });
