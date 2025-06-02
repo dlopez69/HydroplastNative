@@ -67,7 +67,7 @@ export default function HistoryModal({ visible, onClose, title, color, metric, u
   const [error, setError] = useState<string | null>(null);
   const [chartError, setChartError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<'realtime' | '1d' | '7d' | '30d'>('realtime');
-  const [realtimeInterval, setRealtimeInterval] = useState<NodeJS.Timeout | null>(null);
+  const [realtimeInterval, setRealtimeInterval] = useState<number | null>(null);
   const [chartReady, setChartReady] = useState(false);
 
   const [realtimeData, setRealtimeData] = useState<DataPoint[]>([]);
@@ -242,7 +242,7 @@ export default function HistoryModal({ visible, onClose, title, color, metric, u
       let processedData = validData;
       if (validData.length > MAX_DATA_POINTS) {
         const step = Math.floor(validData.length / MAX_DATA_POINTS);
-        processedData = validData.filter((_, index) => index % step === 0);
+        processedData = validData.filter((_: DataPoint, index: number) => index % step === 0);
         if (validData.length > 0) {
           processedData.push(validData[validData.length - 1]);
         }
@@ -397,10 +397,6 @@ export default function HistoryModal({ visible, onClose, title, color, metric, u
                 strokeWidth: 1,
                 stroke: theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
               },
-              paddingLeft: 55,
-              paddingRight: 25,
-              paddingTop: 20,
-              paddingBottom: 15,
               formatYLabel: (value) => {
                 const num = parseFloat(value);
                 return Number.isInteger(num) ? num.toString() : num.toFixed(1);

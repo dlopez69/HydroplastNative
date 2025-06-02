@@ -5,7 +5,7 @@ import useWebSocket from "@/hooks/useWebSocket";
 import { useState } from "react";
 
 interface OperationModesProps {
-    onModeChange?: (mode: 'automatic' | 'manual') => void;
+    onModeChange?: (mode: 'automatic' | 'manual' | 'ia') => void;
 }
 
 export default function OperationModes({ onModeChange }: OperationModesProps) {
@@ -13,16 +13,16 @@ export default function OperationModes({ onModeChange }: OperationModesProps) {
     const textColor = useThemeColor({}, "text");
     const accentColor = useThemeColor({}, "tint");
     const { status, sendMessage } = useWebSocket();
-    const [currentMode, setCurrentMode] = useState<'automatic' | 'manual'>('automatic');
-
-    const handleModeSelect = (mode: 'automatic' | 'manual') => {
+    const [currentMode, setCurrentMode] = useState<'automatic' | 'manual' | 'ia'>('automatic');    const handleModeSelect = (mode: 'automatic' | 'manual' | 'ia') => {
         if (status === "Conectado") {
             setCurrentMode(mode);
             // Send the appropriate command to the ESP32
             if (mode === 'automatic') {
                 sendMessage("auto 0");
-            } else {
+            } else if (mode === 'manual') {
                 sendMessage("manual 0");
+            } else if (mode === 'ia') {
+                sendMessage("ia 0");
             }
             console.log(`Modo seleccionado: ${mode}`);
             onModeChange?.(mode);
@@ -36,14 +36,19 @@ export default function OperationModes({ onModeChange }: OperationModesProps) {
             <Text style={[styles.sectionTitle, { color: textColor }]}>
                 🔄 Modos de Funcionamiento
             </Text>
-            <View style={styles.modesContainer}>
+            <View style={styles.modesContainer}>                
                 <TouchableOpacity 
                     style={[
                         styles.modeButton, 
                         { 
-                            backgroundColor: theme === 'dark' ? '#2A2A2A' : '#F0F0F0',
+                            backgroundColor: currentMode === 'automatic' 
+                                ? accentColor 
+                                : theme === 'dark' ? '#2A2A2A' : '#F0F0F0',
                             borderColor: accentColor,
                             borderWidth: currentMode === 'automatic' ? 3 : 2,
+                            elevation: currentMode === 'automatic' ? 8 : 2,
+                            shadowOpacity: currentMode === 'automatic' ? 0.3 : 0.1,
+                            transform: [{ scale: currentMode === 'automatic' ? 1.02 : 1 }],
                         }
                     ]}
                     onPress={() => handleModeSelect('automatic')}
@@ -51,21 +56,26 @@ export default function OperationModes({ onModeChange }: OperationModesProps) {
                     <Text style={[
                         styles.modeButtonText, 
                         { 
-                            color: textColor,
+                            color: currentMode === 'automatic' 
+                                ? (theme === 'dark' ? '#fff' : '#000')  
+                                : textColor,
                             fontWeight: currentMode === 'automatic' ? 'bold' : 'normal'
                         }
                     ]}>
                         Automático
                     </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
+                </TouchableOpacity>                <TouchableOpacity 
                     style={[
                         styles.modeButton, 
                         { 
-                            backgroundColor: theme === 'dark' ? '#2A2A2A' : '#F0F0F0',
+                            backgroundColor: currentMode === 'manual' 
+                                ? accentColor 
+                                : theme === 'dark' ? '#2A2A2A' : '#F0F0F0',
                             borderColor: accentColor,
                             borderWidth: currentMode === 'manual' ? 3 : 2,
+                            elevation: currentMode === 'manual' ? 8 : 2,
+                            shadowOpacity: currentMode === 'manual' ? 0.3 : 0.1,
+                            transform: [{ scale: currentMode === 'manual' ? 1.02 : 1 }],
                         }
                     ]}
                     onPress={() => handleModeSelect('manual')}
@@ -73,11 +83,40 @@ export default function OperationModes({ onModeChange }: OperationModesProps) {
                     <Text style={[
                         styles.modeButtonText, 
                         { 
-                            color: textColor,
+                            color: currentMode === 'manual' 
+                                ? (theme === 'dark' ? '#fff' : '#000')  
+                                : textColor,
                             fontWeight: currentMode === 'manual' ? 'bold' : 'normal'
                         }
                     ]}>
                         Manual
+                    </Text>
+                </TouchableOpacity>                <TouchableOpacity 
+                    style={[
+                        styles.modeButton, 
+                        { 
+                            backgroundColor: currentMode === 'ia' 
+                                ? accentColor 
+                                : theme === 'dark' ? '#2A2A2A' : '#F0F0F0',
+                            borderColor: accentColor,
+                            borderWidth: currentMode === 'ia' ? 3 : 2,
+                            elevation: currentMode === 'ia' ? 8 : 2,
+                            shadowOpacity: currentMode === 'ia' ? 0.3 : 0.1,
+                            transform: [{ scale: currentMode === 'ia' ? 1.02 : 1 }],
+                        }
+                    ]}
+                    onPress={() => handleModeSelect('ia')}
+                >
+                    <Text style={[
+                        styles.modeButtonText, 
+                        { 
+                            color: currentMode === 'ia' 
+                                ? (theme === 'dark' ? '#fff' : '#000') 
+                                : textColor,
+                            fontWeight: currentMode === 'ia' ? 'bold' : 'normal'
+                        }
+                    ]}>
+                        IA
                     </Text>
                 </TouchableOpacity>
             </View>
@@ -102,8 +141,7 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         flexWrap: "wrap",
         gap: 12,
-    },
-    modeButton: {
+    },    modeButton: {
         flex: 1,
         minWidth: 100,
         padding: 16,

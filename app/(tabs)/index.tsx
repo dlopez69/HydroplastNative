@@ -6,6 +6,7 @@ import useWebSocket from "@/hooks/useWebSocket";
 import ConnectionPanel from "@/components/ConnectionPanel";
 import { default as Collapsible } from "@/components/Collapsible";
 import OperationModes from "@/components/OperationModes";
+import PlantAnalyzer from "@/components/PlantAnalyzer";
 
 export default function HomeScreen() {
     const { theme } = useTheme();
@@ -34,10 +35,12 @@ export default function HomeScreen() {
 
                 <ConnectionPanel showInstructions={false} />
 
-                
-
                 <View style={styles.operationModesWrapper}>
                     <OperationModes/>
+                </View>
+
+                <View style={styles.plantAnalyzerWrapper}>
+                    <PlantAnalyzer />
                 </View>
 
                 {/* Instrucciones Desplegables */}
@@ -64,7 +67,8 @@ export default function HomeScreen() {
                             • Mantén una conexión estable a internet{"\n"}
                             • Verifica el estado de conexión antes de realizar cambios{"\n"}
                             • Monitorea regularmente las métricas del sistema{"\n"}
-                            • Ajusta la configuración según las necesidades de tus cultivos
+                            • Ajusta la configuración según las necesidades de tus cultivos{"\n"}
+                            • Usa buena iluminación para las fotos de análisis IA
                         </Text>
                     </Collapsible>
 
@@ -73,6 +77,8 @@ export default function HomeScreen() {
                             • Si pierdes conexión, intenta reconectar manualmente{"\n"}
                             • Verifica tu conexión a internet si hay problemas{"\n"}
                             • Reinicia la aplicación si persisten los problemas{"\n"}
+                            • Para el análisis IA, asegúrate de tener permisos de cámara{"\n"}
+                            • Si el análisis falla, verifica tu API key de Plantix{"\n"}
                             • Contacta soporte técnico si necesitas ayuda adicional
                         </Text>
                     </Collapsible>
@@ -100,8 +106,13 @@ const styles = StyleSheet.create({
         textAlign: "center",
     },
     operationModesWrapper: {
-        marginBottom: 54,
+        marginBottom: 32,
         width: '100%',
+    },
+    plantAnalyzerWrapper: {
+        marginBottom: 32,
+        width: '100%',
+        backgroundColor: 'transparent',
     },
     text: {
         fontSize: 16,

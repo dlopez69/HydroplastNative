@@ -32,6 +32,18 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Esta aplicación necesita acceso a tu cámara para analizar plantas."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Esta aplicación necesita acceso a tus fotos para seleccionar imágenes de plantas."
+        }
       ]
     ],
     "experiments": {
