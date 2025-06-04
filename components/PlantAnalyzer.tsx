@@ -1,5 +1,5 @@
-// app/components/PlantAnalyzer.tsx - Compatible con SDK 53
-import React, { useState, useRef } from 'react';
+// app/components/PlantAnalyzer.tsx - Con API Real de Plant.id
+import React, { useState, useRef, useEffect } from 'react';
 import {
     View,
     Text,
@@ -8,23 +8,31 @@ import {
     Alert,
     ActivityIndicator,
     Image,
-    Modal
+    Modal,
+    Platform,
+    LogBox
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useTheme } from '@/hooks/ThemeContext';
-// import PlantixService from '@/services/PlantixService'; // Activar cuando tengas API key
+import PlantixService from '../app/services/PlantixService';
+
+// Ignorar warnings específicos
+LogBox.ignoreLogs([
+    'Text strings must be rendered within a <Text> component',
+    'Warning: Text strings must be rendered within a <Text> component'
+]);
 
 const PlantAnalyzer = () => {
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [showCamera, setShowCamera] = useState(false);
-    const [useRealAPI, setUseRealAPI] = useState(false);
-    const [facing, setFacing] = useState<'front' | 'back'>('back'); // ← NUEVO: Estado para cámara
+    const [useRealAPI, setUseRealAPI] = useState(true); // CAMBIADO: Activar API real por defecto
+    const [facing, setFacing] = useState<'front' | 'back'>('back');
+    const [isCameraReady, setIsCameraReady] = useState(false);
     
-    // SDK 53: Nuevo hook para permisos de cámara
     const [permission, requestPermission] = useCameraPermissions();
     const cameraRef = useRef<any>(null);
 
@@ -36,93 +44,170 @@ const PlantAnalyzer = () => {
     const secondaryTextColor = useThemeColor({}, "tabIconDefault");
     const borderColor = theme === "dark" ? "#2D2D2D" : "#E0E5EC";
 
-    // Función para cambiar cámara
-    const toggleCameraFacing = () => {
-        setFacing(current => (current === 'back' ? 'front' : 'back'));
-    };
-
-    // SDK 53: Manejo de permisos actualizado
-    const requestCameraPermission = async () => {
-        if (!permission) {
-            const result = await requestPermission();
-            return result.granted;
-        }
-        
-        if (!permission.granted) {
-            Alert.alert('Permisos', 'Se necesitan permisos de cámara para esta función');
-            return false;
-        }
-        return true;
-    };
-
-    // SDK 53: Función actualizada para tomar foto
-    const takePhoto = async () => {
-        const hasPermission = await requestCameraPermission();
-        if (!hasPermission) return;
-
-        if (cameraRef.current) {
-            try {
-                console.log('📸 Tomando foto...');
-                const photo = await cameraRef.current.takePictureAsync({
-                    quality: 0.8,
-                    skipProcessing: false
-                });
-                console.log('✅ Foto tomada:', photo.uri);
-                setSelectedImage(photo.uri);
-                setShowCamera(false);
-                analyzeImage(photo.uri);
-            } catch (error) {
-                console.error('Error al tomar foto:', error);
-                Alert.alert(
-                    'Error', 
-                    'No se pudo tomar la foto. Asegúrate de que la cámara esté lista.',
-                    [
-                        { text: 'Reintentar', onPress: takePhoto },
-                        { text: 'Cancelar' }
-                    ]
-                );
-            }
-        } else {
-            Alert.alert('Error', 'La cámara no está lista. Intenta nuevamente.');
-        }
-    };
-
-    // Seleccionar imagen de la galería
-    const pickImage = async () => {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-            Alert.alert('Permisos', 'Se necesitan permisos para acceder a las fotos');
-            return;
-        }
-
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images, // ← ACTUALIZADO
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 0.8,
-        });
-
-        if (!result.canceled && result.assets[0]) {
-            const imageUri = result.assets[0].uri;
-            setSelectedImage(imageUri);
-            analyzeImage(imageUri, true);
-        }
-    };
-
-    // Type definitions
+    // Type definitions - ACTUALIZADO para Plant.id
     interface Disease {
         name: string;
         probability: number;
         severity: 'crítica' | 'alta' | 'media' | 'baja';
         description: string;
+        treatment?: string[];
     }
 
     interface AnalysisResult {
-        cropHealth: 'healthy' | 'unhealthy';
+        cropHealth: 'healthy' | 'unhealthy' | 'unknown';
         diseases: Disease[];
         recommendations: string[];
         confidence: number;
+        analysisDate?: string;
+        isPlantDetected?: boolean;
+        plantInfo?: {
+            name: string;
+            probability: number;
+        }[];
     }
+
+    useEffect(() => {
+        if (!showCamera) {
+            setIsCameraReady(false);
+        }
+    }, [showCamera]);
+
+    const toggleCameraFacing = () => {
+        setFacing(current => (current === 'back' ? 'front' : 'back'));
+    };
+
+    const requestCameraPermission = async () => {
+        try {
+            if (!permission) {
+                console.log('🔍 Solicitando permisos de cámara...');
+                const result = await requestPermission();
+                return result.granted;
+            }
+            
+            if (!permission.granted) {
+                console.log('❌ Permisos de cámara denegados');
+                Alert.alert(
+                    'Permisos Requeridos', 
+                    'Esta aplicación necesita acceso a la cámara para analizar plantas. Ve a Configuración para habilitar los permisos.',
+                    [
+                        { text: 'Cancelar', style: 'cancel' },
+                        { text: 'Configuración', onPress: () => {
+                            console.log('Abrir configuración de la app');
+                        }}
+                    ]
+                );
+                return false;
+            }
+            
+            console.log('✅ Permisos de cámara concedidos');
+            return true;
+        } catch (error) {
+            console.error('Error al solicitar permisos:', error);
+            return false;
+        }
+    };
+
+    const openCamera = async () => {
+        try {
+            const hasPermission = await requestCameraPermission();
+            if (!hasPermission) {
+                return;
+            }
+
+            console.log('📱 Abriendo cámara...');
+            setIsCameraReady(false);
+            setShowCamera(true);
+        } catch (error) {
+            console.error('Error al abrir cámara:', error);
+            Alert.alert('Error', 'No se pudo abrir la cámara');
+        }
+    };
+
+    const takePhoto = async () => {
+        if (!isCameraReady) {
+            Alert.alert('Espera', 'La cámara aún se está iniciando...');
+            return;
+        }
+
+        if (!cameraRef.current) {
+            Alert.alert('Error', 'Cámara no disponible');
+            return;
+        }
+
+        try {
+            console.log('📸 Tomando foto...');
+            
+            const photo = await cameraRef.current.takePictureAsync({
+                quality: 0.8, // Mejor calidad para API real
+                base64: false,
+                skipProcessing: true,
+                exif: false,
+                onPictureSaved: undefined
+            });
+
+            if (!photo || !photo.uri) {
+                throw new Error('URI de foto no válida');
+            }
+
+            console.log('✅ Foto tomada exitosamente:', photo.uri);
+            
+            setSelectedImage(photo.uri);
+            setShowCamera(false);
+            setTimeout(() => {
+                analyzeImage(photo.uri);
+            }, 500);
+            
+        } catch (error) {
+            console.error('❌ Error al tomar foto:', error);
+            Alert.alert(
+                'Error de Cámara', 
+                'No se pudo capturar la imagen. Intenta cerrar y abrir la cámara nuevamente.',
+                [
+                    { 
+                        text: 'Reintentar', 
+                        onPress: () => {
+                            setShowCamera(false);
+                            setTimeout(() => openCamera(), 1000);
+                        }
+                    },
+                    { text: 'Cancelar', onPress: () => setShowCamera(false) }
+                ]
+            );
+        }
+    };
+
+    const pickImage = async () => {
+        try {
+            console.log('🖼️ Solicitando permisos de galería...');
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            
+            if (status !== 'granted') {
+                Alert.alert(
+                    'Permisos Requeridos', 
+                    'Se necesitan permisos para acceder a las fotos'
+                );
+                return;
+            }
+
+            console.log('📱 Abriendo galería...');
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.8, // Mejor calidad para API real
+            });
+
+            if (!result.canceled && result.assets && result.assets[0]) {
+                const imageUri = result.assets[0].uri;
+                console.log('✅ Imagen seleccionada:', imageUri);
+                setSelectedImage(imageUri);
+                analyzeImage(imageUri, true);
+            }
+        } catch (error) {
+            console.error('❌ Error al seleccionar imagen:', error);
+            Alert.alert('Error', 'No se pudo acceder a la galería');
+        }
+    };
 
     const analyzeImage = async (imageUri: string, fromGallery: boolean = false): Promise<void> => {
         setIsAnalyzing(true);
@@ -130,79 +215,100 @@ const PlantAnalyzer = () => {
 
         try {
             if (useRealAPI) {
-                // ✅ USAR API REAL DE PLANTIX (cuando esté configurada)
-                console.log('🔍 Analizando con API real de Plantix...');
-                // const result = await PlantixService.analyzeImage(imageUri, fromGallery);
-                // setAnalysisResult(result);
+                console.log('🔍 Analizando con API real de Plant.id...');
                 
-                // Por ahora, mostrar que no está configurada
-                Alert.alert(
-                    'API no configurada',
-                    'Configura tu API key de Plantix en PlantixService.js',
-                    [{ text: 'OK' }]
-                );
-                setIsAnalyzing(false);
-                return;
+                try {
+                    // USAR API REAL
+                    const result = await PlantixService.analyzeImage(imageUri, fromGallery);
+                    console.log('📊 Resultado de API real:', result);
+                    
+                    setAnalysisResult(result);
+                    
+                    // Guardar en historial
+                    await PlantixService.saveAnalysisToHistory(result);
+                    
+                    const message = result.diseases && result.diseases.length > 0 
+                        ? `Análisis completado: ${result.diseases[0].name} (${result.diseases[0].severity})`
+                        : result.isPlantDetected 
+                            ? 'Análisis completado: Planta saludable'
+                            : 'Análisis completado: No se detectó una planta clara';
+                    
+                    Alert.alert('✅ Análisis IA Completo', message, [{ text: 'OK' }]);
+                    
+                } catch (apiError) {
+                    console.error('❌ Error de API:', apiError);
+                    
+                    // Mostrar error específico y fallback a simulación
+                    const errorMessage = apiError instanceof Error ? apiError.message : 'Error desconocido';
+                    Alert.alert(
+                        'Error de API',
+                        `No se pudo conectar con Plant.id: ${errorMessage}\n\n¿Usar modo simulación?`,
+                        [
+                            { 
+                                text: 'Usar Simulación', 
+                                onPress: () => {
+                                    setUseRealAPI(false);
+                                    analyzeImage(imageUri, fromGallery);
+                                }
+                            },
+                            { text: 'Cancelar' }
+                        ]
+                    );
+                    return;
+                }
+                
             } else {
-                // 🧪 MODO SIMULACIÓN (Para desarrollo/testing)
-                console.log('🧪 Re-analizando imagen con datos simulados...');
-                setTimeout(() => {
-                    // Generar resultados aleatorios diferentes cada vez
-                    const healthOptions = ['healthy', 'unhealthy'];
-                    const diseaseNames = [
-                        'Mancha foliar simulada',
-                        'Mildiu simulado', 
-                        'Roya simulada',
-                        'Antracnosis simulada',
-                        'Virus del mosaico simulado'
-                    ];
-                    const severityLevels: ('crítica' | 'alta' | 'media' | 'baja')[] = ['crítica', 'alta', 'media', 'baja'];
-                    
-                    const randomHealth = healthOptions[Math.floor(Math.random() * healthOptions.length)] as 'healthy' | 'unhealthy';
-                    const hasDisease = Math.random() > 0.4; // 60% chance of disease
-                    
-                    const mockResult: AnalysisResult = {
-                        cropHealth: randomHealth,
-                        diseases: hasDisease ? [
-                            {
-                                name: diseaseNames[Math.floor(Math.random() * diseaseNames.length)],
-                                probability: Math.random() * 0.4 + 0.6, // 0.6 - 1.0
-                                severity: severityLevels[Math.floor(Math.random() * severityLevels.length)],
-                                description: 'Simulación: Análisis generado aleatoriamente para demostración'
-                            }
-                        ] : [],
-                        recommendations: [
-                            '💧 [DEMO] Ajustar niveles de humedad',
-                            '🌡️ [DEMO] Verificar temperatura',
-                            '💡 [DEMO] Optimizar iluminación',
-                            '🌱 [DEMO] Revisar nutrientes',
-                            '🔍 [DEMO] Monitorear crecimiento'
-                        ].sort(() => 0.5 - Math.random()).slice(0, 3), // 3 recomendaciones aleatorias
-                        confidence: Math.random() * 0.4 + 0.6 // 0.6 - 1.0
-                    };
-                    
-                    setAnalysisResult(mockResult);
-                    setIsAnalyzing(false);
-
-                    if (mockResult.diseases.length > 0) {
-                        Alert.alert(
-                            '🧪 Re-análisis Completado',
-                            `Nuevo resultado: ${mockResult.diseases[0].name} (${mockResult.diseases[0].severity})`,
-                            [{ text: 'OK' }]
-                        );
-                    } else {
-                        Alert.alert(
-                            '✅ Re-análisis Completado',
-                            'Esta vez no se detectaron problemas en la planta.',
-                            [{ text: 'OK' }]
-                        );
-                    }
-                }, 1500); // Slightly faster for re-analysis
-                return;
+                console.log('🧪 Analizando imagen con datos simulados...');
+                
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                const healthOptions = ['healthy', 'unhealthy'];
+                const diseaseNames = [
+                    'Mancha foliar detectada',
+                    'Posible mildiu', 
+                    'Indicios de roya',
+                    'Síntomas de antracnosis',
+                    'Posible virus del mosaico'
+                ];
+                const severityLevels: ('crítica' | 'alta' | 'media' | 'baja')[] = ['crítica', 'alta', 'media', 'baja'];
+                
+                const randomHealth = healthOptions[Math.floor(Math.random() * healthOptions.length)] as 'healthy' | 'unhealthy';
+                const hasDisease = Math.random() > 0.3;
+                
+                const mockResult: AnalysisResult = {
+                    cropHealth: randomHealth,
+                    diseases: hasDisease ? [
+                        {
+                            name: diseaseNames[Math.floor(Math.random() * diseaseNames.length)],
+                            probability: Math.random() * 0.4 + 0.6,
+                            severity: severityLevels[Math.floor(Math.random() * severityLevels.length)],
+                            description: `Análisis simulado - ${fromGallery ? 'desde galería' : 'desde cámara'}`,
+                            treatment: ['Tratamiento simulado A', 'Tratamiento simulado B']
+                        }
+                    ] : [],
+                    recommendations: [
+                        '💧 Revisar niveles de riego',
+                        '🌡️ Controlar temperatura ambiente',
+                        '💡 Optimizar exposición a luz',
+                        '🌱 Verificar nutrientes del suelo',
+                        '🔍 Monitorear progreso semanal'
+                    ].sort(() => 0.5 - Math.random()).slice(0, 3),
+                    confidence: Math.random() * 0.4 + 0.6,
+                    isPlantDetected: true,
+                    analysisDate: new Date().toISOString()
+                };
+                
+                setAnalysisResult(mockResult);
+                
+                const message = mockResult.diseases.length > 0 
+                    ? `Análisis completado: ${mockResult.diseases[0].name}`
+                    : 'Análisis completado: Planta saludable';
+                
+                Alert.alert('✅ Simulación Completa', message, [{ text: 'OK' }]);
             }
 
         } catch (error) {
-            console.error('Error en análisis:', error);
+            console.error('❌ Error en análisis:', error);
             Alert.alert(
                 'Error en Análisis',
                 'Ocurrió un error durante el análisis. Intenta nuevamente.',
@@ -216,7 +322,17 @@ const PlantAnalyzer = () => {
         }
     };
 
-    // Obtener color según severidad
+    const onCameraReady = () => {
+        console.log('📷 Cámara lista para capturar');
+        setIsCameraReady(true);
+    };
+
+    const closeCamera = () => {
+        console.log('❌ Cerrando cámara...');
+        setIsCameraReady(false);
+        setShowCamera(false);
+    };
+
     const getSeverityColor = (severity: 'crítica' | 'alta' | 'media' | 'baja'): string => {
         const severityColors = {
             'crítica': '#F44336',
@@ -224,19 +340,19 @@ const PlantAnalyzer = () => {
             'media': '#FFC107',
             'baja': '#8BC34A'
         };
-        
         return severityColors[severity] || '#4CAF50';
     };
 
     return (
         <View style={[styles.container, { backgroundColor: 'transparent' }]}>
             <View style={[styles.analysisSection, { backgroundColor: cardColor, borderColor: borderColor }]}>
-                <Text style={[styles.title, { color: textColor }]}>🔬 Análisis de Plantas IA</Text>
+                <Text style={[styles.title, { color: textColor }]}>
+                    🔬 Análisis de Plantas IA
+                </Text>
                 
-                {/* Toggle para API Real */}
                 <View style={styles.toggleContainer}>
                     <Text style={[styles.toggleLabel, { color: secondaryTextColor }]}>
-                        {useRealAPI ? '🌐 API Real' : '🧪 Simulación'}
+                        {useRealAPI ? '🌐 Plant.id API' : '🧪 Simulación'}
                     </Text>
                     <TouchableOpacity
                         style={[
@@ -254,44 +370,64 @@ const PlantAnalyzer = () => {
                 <View style={styles.content}>
                     <Text style={[styles.description, { color: secondaryTextColor }]}>
                         {useRealAPI 
-                            ? 'Conectado a Plantix IA para análisis profesional'
+                            ? 'Conectado a Plant.id IA para análisis profesional de plantas'
                             : 'Modo demostración con datos simulados'
                         }
                     </Text>
 
-                    {/* Botones de acción */}
                     <View style={styles.buttonContainer}>
                         <TouchableOpacity
-                            style={[styles.button, { backgroundColor: primaryColor }]}
-                            onPress={() => setShowCamera(true)}
+                            style={[
+                                styles.button, 
+                                { 
+                                    backgroundColor: isAnalyzing ? '#CCCCCC' : primaryColor,
+                                    opacity: isAnalyzing ? 0.6 : 1
+                                }
+                            ]}
+                            onPress={openCamera}
                             disabled={isAnalyzing}
                         >
-                            <Text style={[styles.buttonText, { color: theme === 'dark' ? 'white' : 'black' }]
-                            }>📷 Cámara</Text>
+                            <Text style={[styles.buttonText, { color: theme === 'dark' ? 'white' : 'black' }]}>
+                                📷 Cámara
+                            </Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={[styles.button, { backgroundColor: primaryColor }]}
+                            style={[
+                                styles.button, 
+                                { 
+                                    backgroundColor: isAnalyzing ? '#CCCCCC' : primaryColor,
+                                    opacity: isAnalyzing ? 0.6 : 1
+                                }
+                            ]}
                             onPress={pickImage}
                             disabled={isAnalyzing}
                         >
-                            <Text style={[styles.buttonText, { color: theme === 'dark' ? 'white' : 'black' }]}>🖼️ Galería</Text>
+                            <Text style={[styles.buttonText, { color: theme === 'dark' ? 'white' : 'black' }]}>
+                                🖼️ Galería
+                            </Text>
                         </TouchableOpacity>
                     </View>
 
-                    {/* Imagen seleccionada */}
                     {selectedImage && (
                         <View style={styles.imageContainer}>
                             <TouchableOpacity 
                                 onPress={() => analyzeImage(selectedImage, false)}
                                 disabled={isAnalyzing}
-                                style={styles.imageButton}
+                                style={[
+                                    styles.imageButton,
+                                    { opacity: isAnalyzing ? 0.6 : 1 }
+                                ]}
                             >
                                 <Image source={{ uri: selectedImage }} style={styles.selectedImage} />
-                                {/* Overlay con icono de re-análisis */}
                                 <View style={styles.imageOverlay}>
                                     {isAnalyzing ? (
-                                        <ActivityIndicator size="small" color="white" />
+                                        <View style={styles.analyzingContainer}>
+                                            <ActivityIndicator size="small" color="white" />
+                                            <Text style={styles.analyzingText}>
+                                                {useRealAPI ? 'Plant.id analizando...' : 'Simulando...'}
+                                            </Text>
+                                        </View>
                                     ) : (
                                         <View style={styles.reAnalyzeIcon}>
                                             <Text style={styles.reAnalyzeText}>🔄</Text>
@@ -303,24 +439,41 @@ const PlantAnalyzer = () => {
                         </View>
                     )}
 
-                    {/* Indicador de carga */}
                     {isAnalyzing && (
                         <View style={styles.loadingContainer}>
-                            <ActivityIndicator size="small" color={primaryColor} />
+                            <ActivityIndicator size="large" color={primaryColor} />
                             <Text style={[styles.loadingText, { color: textColor }]}>
-                                {useRealAPI ? 'Analizando con Plantix IA...' : 'Simulando análisis...'}
+                                {useRealAPI ? 'Analizando con Plant.id IA...' : 'Procesando imagen...'}
                             </Text>
+                            {useRealAPI && (
+                                <Text style={[styles.apiNote, { color: secondaryTextColor }]}>
+                                    Usando créditos de API
+                                </Text>
+                            )}
                         </View>
                     )}
 
-                    {/* Resultado del análisis */}
-                    {analysisResult && (
+                    {analysisResult && !isAnalyzing && (
                         <View style={[styles.resultContainer, { backgroundColor: cardColor }]}>
                             <Text style={[styles.resultTitle, { color: textColor }]}>
-                                📊 Resultado {useRealAPI ? '(Real)' : '(Simulado)'}
+                                📊 Resultado {useRealAPI ? '(Plant.id IA)' : '(Simulado)'}
                             </Text>
 
-                            {/* Estado general */}
+                            {/* Info de la planta detectada */}
+                            {analysisResult.plantInfo && analysisResult.plantInfo.length > 0 && (
+                                <View style={styles.plantInfoSection}>
+                                    <Text style={[styles.sectionTitle, { color: textColor }]}>
+                                        🌿 Planta identificada:
+                                    </Text>
+                                    <Text style={[styles.plantName, { color: primaryColor }]}>
+                                        {analysisResult.plantInfo[0].name}
+                                    </Text>
+                                    <Text style={[styles.plantProbability, { color: secondaryTextColor }]}>
+                                        Confianza: {(analysisResult.plantInfo[0].probability * 100).toFixed(0)}%
+                                    </Text>
+                                </View>
+                            )}
+
                             <View style={styles.healthStatus}>
                                 <Text style={[styles.healthLabel, { color: textColor }]}>
                                     Estado:
@@ -328,94 +481,133 @@ const PlantAnalyzer = () => {
                                 <Text style={[
                                     styles.healthValue,
                                     {
-                                        color: analysisResult.cropHealth === 'healthy' ? '#4CAF50' : '#F44336'
+                                        color: analysisResult.cropHealth === 'healthy' ? '#4CAF50' : 
+                                               analysisResult.cropHealth === 'unhealthy' ? '#F44336' : '#FF9800'
                                     }
                                 ]}>
-                                    {analysisResult.cropHealth === 'healthy' ? '✅ Saludable' : '⚠️ Problemas'}
+                                    {analysisResult.cropHealth === 'healthy' ? '✅ Saludable' : 
+                                     analysisResult.cropHealth === 'unhealthy' ? '⚠️ Problemas detectados' : '❓ Desconocido'}
                                 </Text>
                             </View>
 
-                            {/* Confianza */}
                             <Text style={[styles.confidence, { color: secondaryTextColor }]}>
-                                Confianza: {(analysisResult.confidence * 100).toFixed(0)}%
+                                Análisis general: {(analysisResult.confidence * 100).toFixed(0)}%
                             </Text>
 
-                            {/* Enfermedades detectadas */}
-                            {analysisResult.diseases.length > 0 && (
+                            {analysisResult.diseases && analysisResult.diseases.length > 0 && (
                                 <View style={styles.diseasesSection}>
                                     <Text style={[styles.sectionTitle, { color: textColor }]}>
                                         🦠 Problemas detectados:
                                     </Text>
                                     {analysisResult.diseases.map((disease, index) => (
                                         <View key={index} style={styles.diseaseItem}>
-                                            <Text style={[styles.diseaseName, { color: textColor }]}>
-                                                • {disease.name}
+                                            <View style={styles.diseaseHeader}>
+                                                <Text style={[styles.diseaseName, { color: textColor }]}>
+                                                    • {disease.name}
+                                                </Text>
+                                                <Text style={[
+                                                    styles.diseaseSeverity,
+                                                    { color: getSeverityColor(disease.severity) }
+                                                ]}>
+                                                    ({disease.severity})
+                                                </Text>
+                                            </View>
+                                            <Text style={[styles.diseaseProbability, { color: secondaryTextColor }]}>
+                                                Probabilidad: {(disease.probability * 100).toFixed(0)}%
                                             </Text>
-                                            <Text style={[
-                                                styles.diseaseSeverity,
-                                                { color: getSeverityColor(disease.severity) }
-                                            ]}>
-                                                ({disease.severity})
-                                            </Text>
+                                            {disease.description && (
+                                                <Text style={[styles.diseaseDescription, { color: secondaryTextColor }]}>
+                                                    {disease.description}
+                                                </Text>
+                                            )}
                                         </View>
                                     ))}
                                 </View>
                             )}
 
-                            {/* Recomendaciones */}
-                            {analysisResult.recommendations.length > 0 && (
+                            {analysisResult.recommendations && analysisResult.recommendations.length > 0 && (
                                 <View style={styles.recommendationsSection}>
                                     <Text style={[styles.sectionTitle, { color: textColor }]}>
                                         💡 Recomendaciones:
                                     </Text>
-                                    {analysisResult.recommendations.slice(0, 2).map((rec, index) => (
+                                    {analysisResult.recommendations.slice(0, 3).map((rec, index) => (
                                         <Text key={index} style={[styles.recommendation, { color: secondaryTextColor }]}>
                                             • {rec}
                                         </Text>
                                     ))}
                                 </View>
                             )}
+
+                            {analysisResult.analysisDate && (
+                                <Text style={[styles.analysisDate, { color: secondaryTextColor }]}>
+                                    Análisis: {new Date(analysisResult.analysisDate).toLocaleString()}
+                                </Text>
+                            )}
                         </View>
                     )}
                 </View>
             </View>
 
-            {/* Modal de cámara - SDK 53 Compatible */}
-            <Modal visible={showCamera} animationType="slide">
+            <Modal 
+                visible={showCamera} 
+                animationType="slide"
+                onRequestClose={closeCamera}
+                statusBarTranslucent={true}
+            >
                 <View style={styles.cameraContainer}>
                     {permission?.granted ? (
                         <CameraView
                             style={styles.camera}
-                            facing={facing} // ← ACTUALIZADO: usar el estado
+                            facing={facing}
                             ref={cameraRef}
-                            onCameraReady={() => console.log('📷 Cámara lista')}
+                            onCameraReady={onCameraReady}
+                            mode="picture"
                         >
-                            {/* Controles superpuestos con posición absoluta */}
                             <View style={styles.cameraOverlay}>
-                                {/* Header con botón de cambiar cámara */}
                                 <View style={styles.cameraHeader}>
                                     <TouchableOpacity
                                         style={styles.flipButton}
                                         onPress={toggleCameraFacing}
+                                        disabled={!isCameraReady}
                                     >
                                         <Text style={styles.flipButtonText}>🔄</Text>
                                     </TouchableOpacity>
-                                    <Text style={styles.cameraIndicator}>
-                                        {facing === 'back' ? '📱 Trasera' : '🤳 Frontal'}
-                                    </Text>
+                                    
+                                    <View style={styles.statusContainer}>
+                                        <Text style={styles.cameraIndicator}>
+                                            {facing === 'back' ? '📱 Trasera' : '🤳 Frontal'}
+                                        </Text>
+                                        {!isCameraReady && (
+                                            <Text style={styles.loadingIndicator}>
+                                                Iniciando...
+                                            </Text>
+                                        )}
+                                        {useRealAPI && (
+                                            <Text style={styles.apiIndicator}>
+                                                🌐 Plant.id IA
+                                            </Text>
+                                        )}
+                                    </View>
                                 </View>
 
                                 <View style={styles.cameraControls}>
                                     <TouchableOpacity
                                         style={styles.cancelButton}
-                                        onPress={() => setShowCamera(false)}
+                                        onPress={closeCamera}
                                     >
                                         <Text style={styles.cancelButtonText}>❌ Cancelar</Text>
                                     </TouchableOpacity>
                                     
                                     <TouchableOpacity
-                                        style={styles.captureButton}
+                                        style={[
+                                            styles.captureButton,
+                                            { 
+                                                opacity: isCameraReady ? 1 : 0.5,
+                                                backgroundColor: isCameraReady ? 'white' : '#CCCCCC'
+                                            }
+                                        ]}
                                         onPress={takePhoto}
+                                        disabled={!isCameraReady}
                                     >
                                         <Text style={styles.captureButtonText}>📸</Text>
                                     </TouchableOpacity>
@@ -425,14 +617,27 @@ const PlantAnalyzer = () => {
                     ) : (
                         <View style={styles.permissionContainer}>
                             <Text style={styles.permissionText}>
-                                Se necesitan permisos de cámara
+                                Se necesitan permisos de cámara para continuar
                             </Text>
                             <TouchableOpacity
                                 style={styles.permissionButton}
-                                onPress={requestPermission}
+                                onPress={async () => {
+                                    const granted = await requestCameraPermission();
+                                    if (!granted) {
+                                        setShowCamera(false);
+                                    }
+                                }}
                             >
                                 <Text style={styles.permissionButtonText}>
                                     Conceder Permisos
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.permissionButton, { backgroundColor: '#666', marginTop: 10 }]}
+                                onPress={() => setShowCamera(false)}
+                            >
+                                <Text style={styles.permissionButtonText}>
+                                    Cancelar
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -504,7 +709,6 @@ const styles = StyleSheet.create({
         minWidth: 100,
     },
     buttonText: {
-        color: 'white',
         fontWeight: 'bold',
         textAlign: 'center',
         fontSize: 14,
@@ -534,6 +738,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderRadius: 8,
     },
+    analyzingContainer: {
+        alignItems: 'center',
+    },
+    analyzingText: {
+        color: 'white',
+        fontSize: 10,
+        fontWeight: 'bold',
+        marginTop: 4,
+        textAlign: 'center',
+    },
     reAnalyzeIcon: {
         alignItems: 'center',
     },
@@ -558,6 +772,11 @@ const styles = StyleSheet.create({
         marginTop: 8,
         fontSize: 14,
     },
+    apiNote: {
+        marginTop: 4,
+        fontSize: 12,
+        fontStyle: 'italic',
+    },
     resultContainer: {
         borderRadius: 8,
         padding: 12,
@@ -568,6 +787,20 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginBottom: 12,
         textAlign: 'center',
+    },
+    plantInfoSection: {
+        marginBottom: 12,
+        paddingBottom: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(128, 128, 128, 0.2)',
+    },
+    plantName: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginBottom: 4,
+    },
+    plantProbability: {
+        fontSize: 12,
     },
     healthStatus: {
         flexDirection: 'row',
@@ -598,6 +831,12 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     diseaseItem: {
+        marginBottom: 8,
+        paddingBottom: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(128, 128, 128, 0.1)',
+    },
+    diseaseHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 4,
@@ -605,10 +844,20 @@ const styles = StyleSheet.create({
     diseaseName: {
         fontSize: 13,
         flex: 1,
+        fontWeight: '500',
     },
     diseaseSeverity: {
         fontSize: 12,
-        fontWeight: '500',
+        fontWeight: 'bold',
+    },
+    diseaseProbability: {
+        fontSize: 11,
+        marginBottom: 2,
+    },
+    diseaseDescription: {
+        fontSize: 11,
+        fontStyle: 'italic',
+        lineHeight: 14,
     },
     recommendationsSection: {
         marginBottom: 8,
@@ -618,22 +867,32 @@ const styles = StyleSheet.create({
         marginBottom: 2,
         lineHeight: 16,
     },
+    analysisDate: {
+        fontSize: 10,
+        textAlign: 'center',
+        marginTop: 8,
+        fontStyle: 'italic',
+    },
     cameraContainer: {
         flex: 1,
+        backgroundColor: 'black',
     },
     camera: {
         flex: 1,
     },
     cameraOverlay: {
         ...StyleSheet.absoluteFillObject,
-        justifyContent: 'space-between', // ← CAMBIADO: espacio entre header y controles
+        justifyContent: 'space-between',
     },
     cameraHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingTop: 60, // Para evitar el notch
+        paddingTop: Platform.OS === 'ios' ? 60 : 40,
         paddingHorizontal: 20,
+    },
+    statusContainer: {
+        alignItems: 'flex-end',
     },
     flipButton: {
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
@@ -657,12 +916,32 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: 'bold',
     },
+    loadingIndicator: {
+        backgroundColor: 'rgba(255, 193, 7, 0.8)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        color: 'black',
+        fontSize: 12,
+        fontWeight: 'bold',
+        marginTop: 4,
+    },
+    apiIndicator: {
+        backgroundColor: 'rgba(76, 175, 80, 0.8)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        color: 'white',
+        fontSize: 11,
+        fontWeight: 'bold',
+        marginTop: 4,
+    },
     cameraControls: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         margin: 64,
-        marginBottom: 100,
+        marginBottom: Platform.OS === 'ios' ? 100 : 80,
     },
     cancelButton: {
         backgroundColor: 'rgba(0,0,0,0.6)',
@@ -674,15 +953,17 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     captureButton: {
-        backgroundColor: 'white',
         width: 70,
         height: 70,
         borderRadius: 35,
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 3,
+        borderColor: 'rgba(255,255,255,0.3)',
     },
     captureButtonText: {
         fontSize: 30,
+        color: 'black',
     },
     title: {
         fontSize: 20,
@@ -695,23 +976,27 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#000',
+        padding: 20,
     },
     permissionText: {
         color: 'white',
         fontSize: 18,
         marginBottom: 20,
         textAlign: 'center',
+        lineHeight: 24,
     },
     permissionButton: {
         backgroundColor: '#007AFF',
         paddingHorizontal: 20,
         paddingVertical: 12,
         borderRadius: 8,
+        minWidth: 150,
     },
     permissionButtonText: {
         color: 'white',
         fontSize: 16,
         fontWeight: 'bold',
+        textAlign: 'center',
     },
 });
 
