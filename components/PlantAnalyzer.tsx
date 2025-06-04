@@ -10,7 +10,8 @@ import {
     Image,
     Modal,
     Platform,
-    LogBox
+    LogBox,
+    Linking // Added Linking
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -78,31 +79,54 @@ const PlantAnalyzer = () => {
 
     const requestCameraPermission = async () => {
         try {
-            if (!permission) {
+            let currentPermission = permission; // permission object from the useCameraPermissions hook's state
+
+            if (!currentPermission?.granted) { // If not already granted
+                if (currentPermission?.canAskAgain === false) { // Cannot ask again, must go to settings
+                    console.log('❌ Permisos de cámara denegados permanentemente. Guiando a configuración.');
+                    Alert.alert(
+                        'Permisos Requeridos',
+                        'Los permisos de cámara fueron denegados permanentemente. Debe habilitarlos desde la configuración de la aplicación para usar la cámara.',
+                        [
+                            { text: 'Cancelar', style: 'cancel' },
+                            {
+                                text: 'Abrir Configuración',
+                                onPress: () => Linking.openSettings()
+                            }
+                        ]
+                    );
+                    return false;
+                }
+
+                // If we can ask again (or it's the first time asking)
                 console.log('🔍 Solicitando permisos de cámara...');
-                const result = await requestPermission();
-                return result.granted;
+                const newPermissionStatus = await requestPermission(); // requestPermission function from the hook
+
+                if (!newPermissionStatus.granted) {
+                    console.log('❌ Permisos de cámara denegados por el usuario tras solicitud.');
+                    // Alert even if canAskAgain is true, because the user just denied it.
+                    Alert.alert(
+                        'Permisos Denegados',
+                        'Se necesitan permisos de cámara para esta función. Puede intentar de nuevo o habilitarlos en la configuración.',
+                        [
+                            { text: 'OK', style: 'cancel' },
+                            // Optionally, add settings button here too if canAskAgain is now false
+                            // However, the next click will hit the "denied permanently" case if canAskAgain became false.
+                        ]
+                    );
+                    return false;
+                }
+                console.log('✅ Permisos de cámara concedidos tras solicitud.');
+                return true;
             }
-            
-            if (!permission.granted) {
-                console.log('❌ Permisos de cámara denegados');
-                Alert.alert(
-                    'Permisos Requeridos', 
-                    'Esta aplicación necesita acceso a la cámara para analizar plantas. Ve a Configuración para habilitar los permisos.',
-                    [
-                        { text: 'Cancelar', style: 'cancel' },
-                        { text: 'Configuración', onPress: () => {
-                            console.log('Abrir configuración de la app');
-                        }}
-                    ]
-                );
-                return false;
-            }
-            
-            console.log('✅ Permisos de cámara concedidos');
+
+            // If already granted (currentPermission.granted was true)
+            console.log('✅ Permisos de cámara ya estaban concedidos.');
             return true;
+
         } catch (error) {
-            console.error('Error al solicitar permisos:', error);
+            console.error('Error al solicitar permisos de cámara:', error);
+            Alert.alert('Error de Permisos', 'Ocurrió un error al solicitar los permisos de cámara. Por favor, inténtelo de nuevo.');
             return false;
         }
     };
